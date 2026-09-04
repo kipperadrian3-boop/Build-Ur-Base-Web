@@ -509,17 +509,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const updateTimer = () => {
             if (remaining <= 0) {
                 if (dailyTimerBadge) {
-                    dailyTimerBadge.textContent = "🎉 Ready to claim!";
+                    dailyTimerBadge.textContent = "Ready to claim";
                     dailyTimerBadge.className = "daily-timer-badge ready";
                 }
                 clearInterval(dailyTimerInterval);
                 dailyTimerInterval = null;
                 if (playerDailyReward) playerDailyReward.canClaim = true;
+                renderDailyRewards();
             } else {
+                const formatted = formatRemainingTime(remaining);
                 if (dailyTimerBadge) {
-                    dailyTimerBadge.textContent = `⏳ Next in: ${formatRemainingTime(remaining)}`;
+                    dailyTimerBadge.textContent = `Next in: ${formatted}`;
                     dailyTimerBadge.className = "daily-timer-badge";
                 }
+                document.querySelectorAll('.daily-cooldown-timer').forEach(el => {
+                    el.textContent = `In Cooldown (${formatted})`;
+                });
                 remaining--;
             }
         };
@@ -532,10 +537,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderDailyRewards() {
         if (!dailyRewardsList) return;
+
+        if (!playerDailyReward) {
+            if (dailyStreakBadge) dailyStreakBadge.textContent = "Streak: Syncing...";
+            if (dailyTimerBadge) {
+                dailyTimerBadge.textContent = isServerOnline ? "Syncing..." : "Server Offline";
+                dailyTimerBadge.className = "daily-timer-badge";
+            }
+            if (dailySubtitle) {
+                dailySubtitle.textContent = isServerOnline 
+                    ? "Syncing streak with game server..." 
+                    : "Connect to game server to sync your daily rewards!";
+            }
+            dailyRewardsList.innerHTML = `<div style="text-align:center; padding: 2.5rem 1rem; color: #8c7361; font-weight: 500;">
+                ${isServerOnline ? "Loading daily streak from Roblox game server..." : "Game server is offline. Please start the game to sync!"}
+            </div>`;
+            return;
+        }
         
-        const streak = (playerDailyReward && playerDailyReward.streak) || 1;
-        const canClaim = playerDailyReward ? playerDailyReward.canClaim : false;
-        const remaining = (playerDailyReward && playerDailyReward.remainingSeconds) || 0;
+        const streak = playerDailyReward.streak || 1;
+        const canClaim = playerDailyReward.canClaim;
+        const remaining = playerDailyReward.remainingSeconds || 0;
         
         // Update Header Badges
         if (dailyStreakBadge) {
@@ -550,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (canClaim) {
             if (dailyTimerBadge) {
-                dailyTimerBadge.textContent = "🎉 Ready to claim!";
+                dailyTimerBadge.textContent = "Ready to claim";
                 dailyTimerBadge.className = "daily-timer-badge ready";
             }
             if (dailyTimerInterval) {
@@ -580,11 +602,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (!isServerOnline) {
                         statusHtml = '<button class="daily-claim-btn" disabled title="Game server offline">Server Offline</button>';
                     } else {
-                        statusHtml = '<span class="daily-badge cooldown">⏳ In Cooldown</span>';
+                        statusHtml = `<span class="daily-badge cooldown daily-cooldown-timer">In Cooldown (${formatRemainingTime(remaining)})</span>`;
                     }
                 } else {
                     card.classList.add('locked');
-                    statusHtml = '<span class="daily-badge locked">Locked 🔒</span>';
+                    statusHtml = '<span class="daily-badge locked">Locked</span>';
                 }
                 
                 card.innerHTML = `
@@ -607,11 +629,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (!isServerOnline) {
                 btnHtml = '<button class="daily-claim-btn" disabled>Game Server Offline</button>';
             } else {
-                btnHtml = '<button class="daily-claim-btn" disabled>⏳ Cooldown Active</button>';
+                btnHtml = `<button class="daily-claim-btn daily-cooldown-timer" disabled>In Cooldown (${formatRemainingTime(remaining)})</button>`;
             }
             
             card.innerHTML = `
-                <div class="daily-bonus-title">🌟 Daily Bonus</div>
+                <div class="daily-bonus-title">Daily Bonus</div>
                 <div class="daily-bonus-amount">1,000 – 5,000 🪙</div>
                 <div class="daily-bonus-desc">Random coin bonus refreshes every 24 hours!</div>
                 ${btnHtml}
@@ -645,7 +667,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const data = await res.json();
             if (res.ok && data.success) {
-                showMessage(`🎉 ${data.message || 'Reward claimed!'}`, true);
+                showMessage(data.message || 'Reward claimed!', true);
                 await fetchLiveStatus();
                 renderDailyRewards();
             } else {
