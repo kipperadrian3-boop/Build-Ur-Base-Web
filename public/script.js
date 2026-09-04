@@ -21,13 +21,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    loginBtn.addEventListener('click', async () => {
+    // Auto-login if code is saved
+    const savedCode = localStorage.getItem('roblox_web_code');
+    if (savedCode) {
+        codeInput.value = savedCode;
+        performLogin(savedCode);
+    }
+
+    loginBtn.addEventListener('click', () => {
         const code = codeInput.value;
         if (code.length !== 19) {
             showMessage("Please enter a valid 16-digit code.", false);
             return;
         }
+        performLogin(code);
+    });
 
+    async function performLogin(code) {
         loginBtn.disabled = true;
         loginBtn.textContent = "Connecting...";
         showMessage("", false);
@@ -45,6 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (data.success) {
+                // Save code to local storage so user stays logged in
+                localStorage.setItem('roblox_web_code', code);
+
                 // Login successful
                 inputGroup.classList.add('hidden');
                 logoP.classList.add('hidden');
@@ -58,19 +71,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Show dashboard
                 dashboard.classList.remove('hidden');
             } else {
-                // Invalid code
+                // Invalid code (maybe server restarted and lost it, so we remove it from storage)
+                localStorage.removeItem('roblox_web_code');
                 showMessage(data.error || "Login failed.", false);
+                inputGroup.classList.remove('hidden');
+                logoP.classList.remove('hidden');
+                dashboard.classList.add('hidden');
             }
         } catch (err) {
             console.error(err);
-            showMessage("Server is offline. Is node.js running?", false);
+            showMessage("Server is offline or unreachable.", false);
         } finally {
             loginBtn.disabled = false;
             loginBtn.textContent = "Connect";
         }
-    });
+    }
 
     logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('roblox_web_code');
         dashboard.classList.add('hidden');
         inputGroup.classList.remove('hidden');
         logoP.classList.remove('hidden');
