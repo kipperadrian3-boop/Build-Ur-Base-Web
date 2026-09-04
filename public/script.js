@@ -22,14 +22,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabBtns = document.querySelectorAll('.tab-btn');
     
     // State
+    let currentUser = null;
     let gameConfigs = null;
     let currentCategory = 'Blocks';
     let currentShopCategory = 'Blocks';
-    let currentUser = null;
-    let syncInterval = null;
-    let playerStock = {};
-    let currentServerId = null;
+    
     let isServerOnline = false;
+    let currentServerId = null;
+    let playerStock = {};
+    let playerCash = 0;
+    let syncInterval = null;
 
     // Formatting Code Input
     codeInput.addEventListener('input', (e) => {
@@ -170,6 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
             isServerOnline = data.isServerOnline;
             currentServerId = data.currentServerId;
             playerStock = data.playerStock || {};
+            playerCash = data.playerCash || 0;
             
             if (isServerOnline) {
                 serverStatusDiv.textContent = 'Server: Online';
@@ -179,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 serverStatusDiv.className = 'status-indicator offline';
             }
             
-            playerCashSpan.textContent = `🪙 ${data.playerCash.toLocaleString('de-DE')}`;
+            playerCashSpan.textContent = `🪙 ${playerCash.toLocaleString('de-DE')}`;
             
             // Update shop stock in place if visible
             if (!shopView.classList.contains('hidden')) {
@@ -187,12 +190,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     const buyBtn = card.querySelector('.buy-btn');
                     if (buyBtn) {
                         const key = buyBtn.getAttribute('data-key');
+                        const price = parseInt(buyBtn.getAttribute('data-price'), 10) || 0;
                         const stock = playerStock[key] !== undefined ? playerStock[key] : '?';
                         const stockDiv = card.querySelector('.shop-item-stock');
                         if (stockDiv) stockDiv.textContent = `Stock: ${stock}`;
                         
                         if (!buyBtn.classList.contains('loading')) {
-                            buyBtn.disabled = (!isServerOnline || stock === 0);
+                            buyBtn.classList.remove('no-money');
+                            
+                            if (!isServerOnline) {
+                                buyBtn.disabled = true;
+                            } else if (stock === 0) {
+                                buyBtn.disabled = true;
+                            } else if (playerCash < price) {
+                                buyBtn.disabled = true;
+                                buyBtn.classList.add('no-money');
+                            } else {
+                                buyBtn.disabled = false;
+                            }
                         }
                     }
                 });
@@ -294,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="shop-item-title">${item.DisplayName || item.Key || 'Unknown'}</div>
                     <div class="shop-item-stock">Stock: ${stock}</div>
                 </div>
-                <button class="buy-btn" data-key="${item.Key}">Buy - ${item.Price || 0} 🪙</button>
+                <button class="buy-btn" data-key="${item.Key}" data-price="${item.Price || 0}">Buy - ${item.Price || 0} 🪙</button>
             `;
             
             const buyBtn = card.querySelector('.buy-btn');
@@ -302,6 +317,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (!isServerOnline || stock === 0) {
                 buyBtn.disabled = true;
+            } else if (playerCash < (item.Price || 0)) {
+                buyBtn.disabled = true;
+                buyBtn.classList.add('no-money');
             }
             
             shopList.appendChild(card);
