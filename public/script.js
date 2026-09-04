@@ -519,11 +519,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const formatted = formatRemainingTime(remaining);
                 if (dailyTimerBadge) {
-                    dailyTimerBadge.textContent = `Next in: ${formatted}`;
+                    dailyTimerBadge.textContent = formatted;
                     dailyTimerBadge.className = "daily-timer-badge";
                 }
                 document.querySelectorAll('.daily-cooldown-timer').forEach(el => {
-                    el.textContent = `In Cooldown (${formatted})`;
+                    el.textContent = formatted;
                 });
                 remaining--;
             }
@@ -602,7 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (!isServerOnline) {
                         statusHtml = '<button class="daily-claim-btn" disabled title="Game server offline">Server Offline</button>';
                     } else {
-                        statusHtml = `<span class="daily-badge cooldown daily-cooldown-timer">In Cooldown (${formatRemainingTime(remaining)})</span>`;
+                        statusHtml = `<span class="daily-badge cooldown daily-cooldown-timer">${formatRemainingTime(remaining)}</span>`;
                     }
                 } else {
                     card.classList.add('locked');
@@ -629,7 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (!isServerOnline) {
                 btnHtml = '<button class="daily-claim-btn" disabled>Game Server Offline</button>';
             } else {
-                btnHtml = `<button class="daily-claim-btn daily-cooldown-timer" disabled>In Cooldown (${formatRemainingTime(remaining)})</button>`;
+                btnHtml = `<button class="daily-claim-btn daily-cooldown-timer" disabled>${formatRemainingTime(remaining)}</button>`;
             }
             
             card.innerHTML = `
