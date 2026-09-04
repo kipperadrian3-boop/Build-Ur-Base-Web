@@ -367,7 +367,7 @@ button:hover {
     font-size: 0.78rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
     white-space: nowrap;
     width: 86px;
     height: 34px;

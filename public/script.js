@@ -235,9 +235,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                 });
-                requestAnimationFrame(() => {
-                    applyTextScaled(shopList);
-                });
             }
             
         } catch (err) {
@@ -377,10 +374,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             shopList.appendChild(card);
         });
-
-        requestAnimationFrame(() => {
-            applyTextScaled(shopList);
-        });
     }
 
     async function buyItem(itemKey, btnElement, quantity = 1) {
@@ -460,38 +453,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderShopCategory(currentShopCategory);
     });
 
-    // --- TextScaled Utility (Automatic scaling like Roblox TextScaled) ---
-    function autoScaleElementText(el, maxPx, minPx = 9) {
-        if (!el || !el.clientWidth) return;
-        let current = maxPx;
-        el.style.fontSize = current + 'px';
-        while (el.scrollWidth > el.clientWidth && current > minPx) {
-            current -= 0.5;
-            el.style.fontSize = current + 'px';
-        }
-    }
-
-    function applyTextScaled(root = document) {
-        if (!root) return;
-        // Scale shop item titles
-        root.querySelectorAll('.shop-item-title').forEach(el => {
-            autoScaleElementText(el, 15, 10.5);
-        });
-        // Scale qty/price buttons
-        root.querySelectorAll('.qty-btn').forEach(el => {
-            autoScaleElementText(el, 12.5, 9);
-        });
-    }
-
-    let resizeTimeout;
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() => {
-            if (!shopView.classList.contains('hidden')) {
-                applyTextScaled(shopList);
-            }
-        }, 100);
-    });
-
 });
+
 
