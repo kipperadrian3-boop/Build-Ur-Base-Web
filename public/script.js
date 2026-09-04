@@ -51,6 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 playerNameSpan.textContent = data.user.username;
                 
+                if (data.user.avatarUrl) {
+                    document.querySelector('.avatar-placeholder').style.backgroundImage = `url('${data.user.avatarUrl}')`;
+                }
+
                 // Show dashboard
                 dashboard.classList.remove('hidden');
             } else {

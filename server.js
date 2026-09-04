@@ -32,7 +32,7 @@ app.post('/api/registerCode', (req, res) => {
 });
 
 // 2. Endpoint for the Website to login via code
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
     const { code } = req.body;
 
     if (!code) {
@@ -43,7 +43,19 @@ app.post('/api/login', (req, res) => {
 
     if (userData) {
         console.log(`[Backend] User ${userData.username} logged in via code.`);
-        res.status(200).json({ success: true, user: userData });
+        
+        let avatarUrl = 'https://tr.rbxcdn.com/38c6edcb50633730ff4cf39ac8859840/150/150/AvatarHeadshot/Png';
+        try {
+            const thumbRes = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userData.userId}&size=150x150&format=Png&isCircular=false`);
+            const thumbData = await thumbRes.json();
+            if (thumbData && thumbData.data && thumbData.data.length > 0) {
+                avatarUrl = thumbData.data[0].imageUrl;
+            }
+        } catch (err) {
+            console.error('[Backend] Fehler beim Laden des Avatars:', err);
+        }
+
+        res.status(200).json({ success: true, user: { ...userData, avatarUrl: avatarUrl } });
     } else {
         res.status(401).json({ success: false, error: 'Invalid or expired code' });
     }
