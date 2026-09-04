@@ -193,9 +193,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (stockDiv) stockDiv.textContent = `Stock: ${stock}`;
                     
                     const buyBtn = card.querySelector('.execute-buy-btn');
+                    const price = parseInt(buyBtn ? buyBtn.getAttribute('data-price') : 0, 10) || 0;
+                    
+                    const maxQtyBtn = card.querySelector('.max-qty-btn');
+                    if (maxQtyBtn) {
+                        const stockNum = stock === '?' ? 99 : stock;
+                        maxQtyBtn.setAttribute('data-qty', stockNum);
+                        maxQtyBtn.textContent = `x${stockNum} - ${price * stockNum} 🪙`;
+                        
+                        if (maxQtyBtn.classList.contains('selected')) {
+                            const actionsDiv = card.querySelector('.buy-actions');
+                            if (actionsDiv) actionsDiv.setAttribute('data-selected-qty', stockNum);
+                        }
+                    }
+                    
                     if (buyBtn && !buyBtn.classList.contains('loading')) {
                         buyBtn.classList.remove('no-money');
-                        const price = parseInt(buyBtn.getAttribute('data-price'), 10) || 0;
                         const actionsDiv = card.querySelector('.buy-actions');
                         const qty = parseInt(actionsDiv ? actionsDiv.getAttribute('data-selected-qty') : 1, 10) || 1;
                         const totalCost = price * qty;
@@ -204,8 +217,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             buyBtn.disabled = true;
                         } else if (stock === 0) {
                             buyBtn.disabled = true;
-                        } else if (qty === 99) {
-                            // For Max, only disable if we can't even afford 1
+                        } else if (qty > 1 && qty === stock) {
+                            // This is the Max button (matches stock). Disable only if they can't even afford 1.
                             if (playerCash < price) {
                                 buyBtn.disabled = true;
                                 buyBtn.classList.add('no-money');
@@ -317,6 +330,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const multiQty = category === 'Chests' ? 3 : 5;
             const price = item.Price || 0;
             
+            const stockNum = stock === '?' ? 99 : stock;
+            
             card.innerHTML = `
                 ${item.imageUrl ? `<img src="${item.imageUrl}" style="width: 50px; height: 50px; border-radius: 6px;" alt="${item.DisplayName || item.Key}">` : ''}
                 <div class="shop-item-info">
@@ -325,8 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="buy-actions" data-selected-qty="1">
                     <button class="qty-btn selected" data-qty="1">x1 - ${price} 🪙</button>
-                    <button class="qty-btn" data-qty="3">x3 - ${price * 3} 🪙</button>
-                    <button class="qty-btn" data-qty="99">Max</button>
+                    <button class="qty-btn max-qty-btn" data-qty="${stockNum}">x${stockNum} - ${price * stockNum} 🪙</button>
                     <button class="buy-btn execute-buy-btn" data-key="${item.Key}" data-price="${price}">Buy</button>
                 </div>
             `;
