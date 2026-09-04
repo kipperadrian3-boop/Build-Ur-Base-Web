@@ -181,9 +181,21 @@ document.addEventListener('DOMContentLoaded', () => {
             
             playerCashSpan.textContent = `🪙 ${data.playerCash.toLocaleString('de-DE')}`;
             
-            // Re-render shop if it's visible so stock updates live
+            // Update shop stock in place if visible
             if (!shopView.classList.contains('hidden')) {
-                renderShopCategory(currentShopCategory);
+                document.querySelectorAll('.shop-item').forEach(card => {
+                    const buyBtn = card.querySelector('.buy-btn');
+                    if (buyBtn) {
+                        const key = buyBtn.getAttribute('data-key');
+                        const stock = playerStock[key] !== undefined ? playerStock[key] : '?';
+                        const stockDiv = card.querySelector('.shop-item-stock');
+                        if (stockDiv) stockDiv.textContent = `Stock: ${stock}`;
+                        
+                        if (!buyBtn.classList.contains('loading')) {
+                            buyBtn.disabled = (!isServerOnline || stock === 0);
+                        }
+                    }
+                });
             }
             
         } catch (err) {
