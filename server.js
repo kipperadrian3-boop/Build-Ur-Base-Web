@@ -14,9 +14,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 // In-Memory Database for codes
 const codesDB = {}; 
 
-// Game Config Data
-let currentConfigVersion = "none";
+// Game Config Data (Hardcoded to avoid dependency on Roblox server being online)
+const fs = require('fs');
 let gameConfigs = {};
+try {
+    const data = fs.readFileSync(path.join(__dirname, 'configs.json'), 'utf8');
+    gameConfigs = JSON.parse(data);
+    console.log("[Backend] Loaded static configs.json successfully.");
+} catch (e) {
+    console.error("[Backend] Could not load configs.json", e);
+}
 
 // 1. Endpoint for Roblox Server to register a code
 app.post('/api/registerCode', (req, res) => {
@@ -30,24 +37,6 @@ app.post('/api/registerCode', (req, res) => {
     console.log(`[Backend] Code registered for ${username}: ${code}`);
 
     res.status(200).json({ message: 'Code successfully registered' });
-});
-
-// Endpoint: Check Config Version
-app.get('/api/configVersion', (req, res) => {
-    res.status(200).json({ version: currentConfigVersion });
-});
-
-// Endpoint: Update Configs (from Roblox)
-app.post('/api/configs', (req, res) => {
-    const { version, configs } = req.body;
-    if (version && configs) {
-        currentConfigVersion = version;
-        gameConfigs = configs;
-        console.log(`[Backend] Configs updated to version: ${version}`);
-        res.status(200).json({ message: 'Configs updated' });
-    } else {
-        res.status(400).json({ error: 'Invalid config payload' });
-    }
 });
 
 // Endpoint: Get Configs (for Frontend)
