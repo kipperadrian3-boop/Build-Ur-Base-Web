@@ -202,7 +202,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         if (!isServerOnline) {
                             buyBtn.disabled = true;
-                        } else if (stock === 0 || stock < qty) {
+                        } else if (stock === 0) {
+                            buyBtn.disabled = true;
+                        } else if (qty === 99) {
+                            // For Max, only disable if we can't even afford 1
+                            if (playerCash < price) {
+                                buyBtn.disabled = true;
+                                buyBtn.classList.add('no-money');
+                            } else {
+                                buyBtn.disabled = false;
+                            }
+                        } else if (stock !== '?' && stock < qty) {
                             buyBtn.disabled = true;
                         } else if (playerCash < totalCost) {
                             buyBtn.disabled = true;
@@ -315,7 +325,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="buy-actions" data-selected-qty="1">
                     <button class="qty-btn selected" data-qty="1">x1 - ${price} 🪙</button>
-                    <button class="qty-btn" data-qty="${multiQty}">x${multiQty} - ${price * multiQty} 🪙</button>
+                    <button class="qty-btn" data-qty="3">x3 - ${price * 3} 🪙</button>
+                    <button class="qty-btn" data-qty="99">Max</button>
                     <button class="buy-btn execute-buy-btn" data-key="${item.Key}" data-price="${price}">Buy</button>
                 </div>
             `;
