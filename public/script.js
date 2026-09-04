@@ -29,9 +29,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Auto-login
+    // Auto-login if code and user data is saved
     const savedCode = localStorage.getItem('roblox_web_code');
-    if (savedCode) {
+    const savedUser = localStorage.getItem('roblox_web_user');
+    
+    if (savedCode && savedUser) {
+        // Bypass the server check entirely because the user was already validated before
+        const userData = JSON.parse(savedUser);
+        codeInput.value = savedCode;
+        
+        loginView.classList.add('hidden');
+        mainAppView.classList.remove('hidden');
+        
+        playerNameSpan.textContent = userData.username;
+        if (userData.avatarUrl) {
+            avatarPlaceholder.style.backgroundImage = `url('${userData.avatarUrl}')`;
+        }
+        
+        loadGameConfigs();
+    } else if (savedCode) {
+        // Fallback for older sessions
         codeInput.value = savedCode;
         performLogin(savedCode);
     }
@@ -60,7 +77,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (data.success) {
+                // Save EVERYTHING to local storage so user stays logged in offline
                 localStorage.setItem('roblox_web_code', code);
+                localStorage.setItem('roblox_web_user', JSON.stringify({
+                    username: data.user.username,
+                    avatarUrl: data.user.avatarUrl
+                }));
                 
                 // Show Main App
                 loginView.classList.add('hidden');
@@ -76,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
             } else {
                 localStorage.removeItem('roblox_web_code');
+                localStorage.removeItem('roblox_web_user');
                 showMessage(data.error || "Login failed.", false);
                 loginView.classList.remove('hidden');
                 mainAppView.classList.add('hidden');
@@ -91,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('roblox_web_code');
+        localStorage.removeItem('roblox_web_user');
         mainAppView.classList.add('hidden');
         loginView.classList.remove('hidden');
         codeInput.value = "";
