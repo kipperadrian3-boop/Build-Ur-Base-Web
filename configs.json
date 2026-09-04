@@ -1,33 +1,33 @@
 {
   "Blocks": {
-    "Block": { "DisplayName": "Block", "Durability": 10, "Price": 10, "Order": 1, "Rarity": "Uncommon" },
-    "Stone Block": { "DisplayName": "Stone Block", "Durability": 25, "Price": 150, "Order": 2, "Rarity": "Rare" },
-    "Metal Block": { "DisplayName": "Metal Block", "Durability": 50, "Price": 1000, "Order": 3, "Rarity": "Epic" }
+    "Block": { "DisplayName": "Block", "Durability": 10, "Price": 10, "Order": 1, "Rarity": "Uncommon", "ImageId": "91388826370903" },
+    "Stone Block": { "DisplayName": "Stone Block", "Durability": 25, "Price": 150, "Order": 2, "Rarity": "Rare", "ImageId": "137826453140740" },
+    "Metal Block": { "DisplayName": "Metal Block", "Durability": 50, "Price": 1000, "Order": 3, "Rarity": "Epic", "ImageId": "91264495226646" }
   },
   "Decor": {
-    "Laserdoor": { "DisplayName": "Laserdoor", "Durability": 20, "Price": 20, "Order": 1, "Rarity": "Uncommon" },
-    "Stone Laserdoor": { "DisplayName": "Stone Laserdoor", "Durability": 50, "Price": 300, "Order": 2, "Rarity": "Rare" },
-    "Metal Laserdoor": { "DisplayName": "Metal Laserdoor", "Durability": 100, "Price": 2000, "Order": 3, "Rarity": "Epic" },
-    "Stair": { "DisplayName": "Stair", "Durability": 10, "Price": 10, "Order": 4, "Rarity": "Uncommon" },
-    "Stone Stair": { "DisplayName": "Stone Stair", "Durability": 25, "Price": 150, "Order": 5, "Rarity": "Rare" },
-    "Metal Stair": { "DisplayName": "Metal Stair", "Durability": 50, "Price": 1000, "Order": 6, "Rarity": "Epic" },
-    "Wedge": { "DisplayName": "Wedge", "Durability": 10, "Price": 10, "Order": 7, "Rarity": "Uncommon" },
-    "Stone Wedge": { "DisplayName": "Stone Wedge", "Durability": 25, "Price": 150, "Order": 8, "Rarity": "Rare" },
-    "Metal Wedge": { "DisplayName": "Metal Wedge", "Durability": 50, "Price": 1000, "Order": 9, "Rarity": "Epic" },
-    "Window": { "DisplayName": "Window", "Durability": 10, "Price": 10, "Order": 10, "Rarity": "Uncommon" },
-    "Stone Window": { "DisplayName": "Stone Window", "Durability": 25, "Price": 150, "Order": 11, "Rarity": "Rare" },
-    "Metal Window": { "DisplayName": "Metal Window", "Durability": 50, "Price": 1000, "Order": 12, "Rarity": "Epic" }
+    "Laserdoor": { "DisplayName": "Laserdoor", "Durability": 20, "Price": 20, "Order": 1, "Rarity": "Uncommon", "ImageId": "137585128368048" },
+    "Stone Laserdoor": { "DisplayName": "Stone Laserdoor", "Durability": 50, "Price": 300, "Order": 2, "Rarity": "Rare", "ImageId": "97373659501115" },
+    "Metal Laserdoor": { "DisplayName": "Metal Laserdoor", "Durability": 100, "Price": 2000, "Order": 3, "Rarity": "Epic", "ImageId": "138136411635192" },
+    "Stair": { "DisplayName": "Stair", "Durability": 10, "Price": 10, "Order": 4, "Rarity": "Uncommon", "ImageId": "91295663640320" },
+    "Stone Stair": { "DisplayName": "Stone Stair", "Durability": 25, "Price": 150, "Order": 5, "Rarity": "Rare", "ImageId": "110174515827290" },
+    "Metal Stair": { "DisplayName": "Metal Stair", "Durability": 50, "Price": 1000, "Order": 6, "Rarity": "Epic", "ImageId": "123425774916658" },
+    "Wedge": { "DisplayName": "Wedge", "Durability": 10, "Price": 10, "Order": 7, "Rarity": "Uncommon", "ImageId": "114545574282202" },
+    "Stone Wedge": { "DisplayName": "Stone Wedge", "Durability": 25, "Price": 150, "Order": 8, "Rarity": "Rare", "ImageId": "118041504736161" },
+    "Metal Wedge": { "DisplayName": "Metal Wedge", "Durability": 50, "Price": 1000, "Order": 9, "Rarity": "Epic", "ImageId": "90633956586353" },
+    "Window": { "DisplayName": "Window", "Durability": 10, "Price": 10, "Order": 10, "Rarity": "Uncommon", "ImageId": "97909638101572" },
+    "Stone Window": { "DisplayName": "Stone Window", "Durability": 25, "Price": 150, "Order": 11, "Rarity": "Rare", "ImageId": "106502016899260" },
+    "Metal Window": { "DisplayName": "Metal Window", "Durability": 50, "Price": 1000, "Order": 12, "Rarity": "Epic", "ImageId": "95496957793336" }
   },
   "Defense": {
-    "1Turret": { "DisplayName": "Basic Turret", "Durability": 50, "Damage": 1, "FireRate": 0.1, "Range": 26, "Price": 100, "Order": 1, "Rarity": "Uncommon" },
-    "2Turret": { "DisplayName": "Red Turret", "Durability": 150, "Damage": 3, "FireRate": 0.09, "Range": 27, "Price": 500, "Order": 2, "Rarity": "Rare" },
-    "3Turret": { "DisplayName": "Double Turret", "Durability": 500, "Damage": 5, "FireRate": 0.08, "Range": 25, "Price": 1500, "Order": 3, "Rarity": "Epic" },
-    "4Turret": { "DisplayName": "Triple Turret", "Durability": 700, "Damage": 6, "FireRate": 0.06, "Range": 24, "Price": 5000, "Order": 4, "Rarity": "Legendary" },
-    "Flamethrower": { "DisplayName": "Flamethrower", "Durability": 500, "Damage": 2, "FireRate": 0.01, "Range": 21, "Price": 10000, "Order": 5, "Rarity": "Mythical" }
+    "1Turret": { "DisplayName": "Basic Turret", "Durability": 50, "Damage": 1, "FireRate": 0.1, "Range": 26, "Price": 100, "Order": 1, "Rarity": "Uncommon", "ImageId": "107683630152686" },
+    "2Turret": { "DisplayName": "Red Turret", "Durability": 150, "Damage": 3, "FireRate": 0.09, "Range": 27, "Price": 500, "Order": 2, "Rarity": "Rare", "ImageId": "77711920574942" },
+    "3Turret": { "DisplayName": "Double Turret", "Durability": 500, "Damage": 5, "FireRate": 0.08, "Range": 25, "Price": 1500, "Order": 3, "Rarity": "Epic", "ImageId": "138816915071716" },
+    "4Turret": { "DisplayName": "Triple Turret", "Durability": 700, "Damage": 6, "FireRate": 0.06, "Range": 24, "Price": 5000, "Order": 4, "Rarity": "Legendary", "ImageId": "82565930355760" },
+    "Flamethrower": { "DisplayName": "Flamethrower", "Durability": 500, "Damage": 2, "FireRate": 0.01, "Range": 21, "Price": 10000, "Order": 5, "Rarity": "Mythical", "ImageId": "73933700065225" }
   },
   "Chests": {
-    "Wood Chest": { "DisplayName": "Wood Chest", "Price": 500, "Order": 1, "Rarity": "Uncommon", "Timer": 60 },
-    "Iron Chest": { "DisplayName": "Iron Chest", "Price": 2500, "Order": 2, "Rarity": "Rare", "Timer": 300 },
-    "Diamond Chest": { "DisplayName": "Diamond Chest", "Price": 10000, "Order": 3, "Rarity": "Epic", "Timer": 1800 }
+    "Wood Chest": { "DisplayName": "Wood Chest", "Price": 500, "Order": 1, "Rarity": "Uncommon", "Timer": 60, "ImageId": "132134528375425" },
+    "Iron Chest": { "DisplayName": "Iron Chest", "Price": 2500, "Order": 2, "Rarity": "Rare", "Timer": 300, "ImageId": "102010527065592" },
+    "Diamond Chest": { "DisplayName": "Diamond Chest", "Price": 10000, "Order": 3, "Rarity": "Epic", "Timer": 1800, "ImageId": "74149599000593" }
   }
 }

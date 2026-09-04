@@ -174,6 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (item.Timer) statsHtml += `<div class="item-stat">Timer <span>${item.Timer}s</span></div>`;
             
             card.innerHTML = `
+                ${item.imageUrl ? `<img src="${item.imageUrl}" class="item-img" alt="${item.DisplayName || item.Name}">` : ''}
                 <h3>${item.DisplayName || item.Name || 'Unknown'}</h3>
                 ${statsHtml}
             `;

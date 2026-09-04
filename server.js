@@ -21,8 +21,51 @@ try {
     const data = fs.readFileSync(path.join(__dirname, 'configs.json'), 'utf8');
     gameConfigs = JSON.parse(data);
     console.log("[Backend] Loaded static configs.json successfully.");
+    
+    // Fetch all thumbnails from Roblox
+    fetchThumbnails();
 } catch (e) {
     console.error("[Backend] Could not load configs.json", e);
+}
+
+async function fetchThumbnails() {
+    let assetIds = [];
+    // Collect all IDs
+    for (const cat in gameConfigs) {
+        for (const key in gameConfigs[cat]) {
+            if (gameConfigs[cat][key].ImageId) {
+                assetIds.push(gameConfigs[cat][key].ImageId);
+            }
+        }
+    }
+    
+    if (assetIds.length === 0) return;
+    
+    try {
+        // Fetch in chunks of 50 (Roblox limit) if necessary, but we only have ~23 items
+        const res = await fetch(`https://thumbnails.roblox.com/v1/assets?assetIds=${assetIds.join(',')}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false`);
+        const json = await res.json();
+        
+        if (json && json.data) {
+            const imageMap = {};
+            json.data.forEach(item => {
+                imageMap[item.targetId.toString()] = item.imageUrl;
+            });
+            
+            // Map back to configs
+            for (const cat in gameConfigs) {
+                for (const key in gameConfigs[cat]) {
+                    const id = gameConfigs[cat][key].ImageId;
+                    if (id && imageMap[id]) {
+                        gameConfigs[cat][key].imageUrl = imageMap[id];
+                    }
+                }
+            }
+            console.log("[Backend] Roblox Thumbnails successfully fetched and mapped!");
+        }
+    } catch (err) {
+        console.error("[Backend] Error fetching thumbnails:", err);
+    }
 }
 
 // 1. Endpoint for Roblox Server to register a code
