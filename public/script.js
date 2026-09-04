@@ -235,7 +235,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!items) return;
         
         // Convert to array and sort by Order
-        const sortedItems = Object.values(items).sort((a, b) => (a.Order || 0) - (b.Order || 0));
+        const itemsWithKey = Object.entries(items).map(([k, v]) => ({ ...v, Key: k }));
+        const sortedItems = itemsWithKey.sort((a, b) => (a.Order || 0) - (b.Order || 0));
 
         sortedItems.forEach(item => {
             const card = document.createElement('div');
@@ -256,8 +257,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (item.Timer) statsHtml += `<div class="item-stat">Timer <span>${item.Timer}s</span></div>`;
             
             card.innerHTML = `
-                ${item.imageUrl ? `<img src="${item.imageUrl}" class="item-img" alt="${item.DisplayName || item.Name}">` : ''}
-                <h3>${item.DisplayName || item.Name || 'Unknown'}</h3>
+                ${item.imageUrl ? `<img src="${item.imageUrl}" class="item-img" alt="${item.DisplayName || item.Key}">` : ''}
+                <h3>${item.DisplayName || item.Key || 'Unknown'}</h3>
                 ${statsHtml}
             `;
             
@@ -278,25 +279,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const items = gameConfigs[category];
         if (!items) return;
 
-        const sortedItems = Object.values(items).sort((a, b) => (a.Order || 0) - (b.Order || 0));
+        const itemsWithKey = Object.entries(items).map(([k, v]) => ({ ...v, Key: k }));
+        const sortedItems = itemsWithKey.sort((a, b) => (a.Order || 0) - (b.Order || 0));
 
         sortedItems.forEach(item => {
             const card = document.createElement('div');
             card.className = 'shop-item';
             
-            const stock = playerStock[item.Name] !== undefined ? playerStock[item.Name] : '?';
+            const stock = playerStock[item.Key] !== undefined ? playerStock[item.Key] : '?';
             
             card.innerHTML = `
-                ${item.imageUrl ? `<img src="${item.imageUrl}" style="width: 50px; height: 50px; border-radius: 6px;" alt="${item.DisplayName || item.Name}">` : ''}
+                ${item.imageUrl ? `<img src="${item.imageUrl}" style="width: 50px; height: 50px; border-radius: 6px;" alt="${item.DisplayName || item.Key}">` : ''}
                 <div class="shop-item-info">
-                    <div class="shop-item-title">${item.DisplayName || item.Name || 'Unknown'}</div>
+                    <div class="shop-item-title">${item.DisplayName || item.Key || 'Unknown'}</div>
                     <div class="shop-item-stock">Stock: ${stock}</div>
                 </div>
-                <button class="buy-btn" data-key="${item.Name}">Buy - ${item.Price || 0} 🪙</button>
+                <button class="buy-btn" data-key="${item.Key}">Buy - ${item.Price || 0} 🪙</button>
             `;
             
             const buyBtn = card.querySelector('.buy-btn');
-            buyBtn.addEventListener('click', () => buyItem(item.Name, buyBtn));
+            buyBtn.addEventListener('click', () => buyItem(item.Key, buyBtn));
             
             if (!isServerOnline || stock === 0) {
                 buyBtn.disabled = true;

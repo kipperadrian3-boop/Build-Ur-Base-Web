@@ -93,6 +93,10 @@ app.get('/api/status/:userId', (req, res) => {
     res.status(200).json({ isServerOnline, currentServerId, playerCash, playerStock });
 });
 
+app.get('/api/debugServers', (req, res) => {
+    res.status(200).json(activeServers);
+});
+
 // -------------------------
 // 2-WAY SYNC (REMOTE SHOP)
 // -------------------------
