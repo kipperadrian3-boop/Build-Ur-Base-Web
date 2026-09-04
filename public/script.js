@@ -187,29 +187,31 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update shop stock in place if visible
             if (!shopView.classList.contains('hidden')) {
                 document.querySelectorAll('.shop-item').forEach(card => {
-                    const buyBtn = card.querySelector('.buy-btn');
-                    if (buyBtn) {
-                        const key = buyBtn.getAttribute('data-key');
-                        const price = parseInt(buyBtn.getAttribute('data-price'), 10) || 0;
-                        const stock = playerStock[key] !== undefined ? playerStock[key] : '?';
-                        const stockDiv = card.querySelector('.shop-item-stock');
-                        if (stockDiv) stockDiv.textContent = `Stock: ${stock}`;
-                        
+                    const stockDiv = card.querySelector('.shop-item-stock');
+                    const key = card.getAttribute('data-item-key');
+                    const stock = playerStock[key] !== undefined ? playerStock[key] : '?';
+                    if (stockDiv) stockDiv.textContent = `Stock: ${stock}`;
+                    
+                    const buttons = card.querySelectorAll('.buy-btn');
+                    buttons.forEach(buyBtn => {
                         if (!buyBtn.classList.contains('loading')) {
                             buyBtn.classList.remove('no-money');
+                            const price = parseInt(buyBtn.getAttribute('data-price'), 10) || 0;
+                            const qty = parseInt(buyBtn.getAttribute('data-qty') || card.querySelector('.custom-qty-input').value, 10) || 1;
+                            const totalCost = price * qty;
                             
                             if (!isServerOnline) {
                                 buyBtn.disabled = true;
-                            } else if (stock === 0) {
+                            } else if (stock === 0 || stock < qty) {
                                 buyBtn.disabled = true;
-                            } else if (playerCash < price) {
+                            } else if (playerCash < totalCost) {
                                 buyBtn.disabled = true;
                                 buyBtn.classList.add('no-money');
                             } else {
                                 buyBtn.disabled = false;
                             }
                         }
-                    }
+                    });
                 });
             }
             
@@ -300,8 +302,11 @@ document.addEventListener('DOMContentLoaded', () => {
         sortedItems.forEach(item => {
             const card = document.createElement('div');
             card.className = 'shop-item';
+            card.setAttribute('data-item-key', item.Key);
             
             const stock = playerStock[item.Key] !== undefined ? playerStock[item.Key] : '?';
+            const multiQty = category === 'Chests' ? 3 : 5;
+            const price = item.Price || 0;
             
             card.innerHTML = `
                 ${item.imageUrl ? `<img src="${item.imageUrl}" style="width: 50px; height: 50px; border-radius: 6px;" alt="${item.DisplayName || item.Key}">` : ''}
@@ -309,24 +314,45 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="shop-item-title">${item.DisplayName || item.Key || 'Unknown'}</div>
                     <div class="shop-item-stock">Stock: ${stock}</div>
                 </div>
-                <button class="buy-btn" data-key="${item.Key}" data-price="${item.Price || 0}">Buy - ${item.Price || 0} 🪙</button>
+                <div class="buy-actions">
+                    <button class="buy-btn" data-key="${item.Key}" data-qty="1" data-price="${price}">Buy - ${price} 🪙</button>
+                    <button class="buy-btn multi-btn" data-key="${item.Key}" data-qty="${multiQty}" data-price="${price}">x${multiQty} - ${price * multiQty} 🪙</button>
+                    <div class="custom-buy-group">
+                        <input type="number" class="custom-qty-input" min="1" value="1" />
+                        <button class="buy-btn custom-btn" data-key="${item.Key}" data-price="${price}">Buy</button>
+                    </div>
+                </div>
             `;
             
-            const buyBtn = card.querySelector('.buy-btn');
-            buyBtn.addEventListener('click', () => buyItem(item.Key, buyBtn));
-            
-            if (!isServerOnline || stock === 0) {
-                buyBtn.disabled = true;
-            } else if (playerCash < (item.Price || 0)) {
-                buyBtn.disabled = true;
-                buyBtn.classList.add('no-money');
-            }
+            const buttons = card.querySelectorAll('.buy-btn');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    let qty = parseInt(btn.getAttribute('data-qty'), 10);
+                    if (isNaN(qty)) {
+                        // It's the custom button
+                        qty = parseInt(card.querySelector('.custom-qty-input').value, 10);
+                        if (isNaN(qty) || qty < 1) qty = 1;
+                    }
+                    buyItem(item.Key, btn, qty);
+                });
+                
+                // Initial state check
+                let checkQty = parseInt(btn.getAttribute('data-qty'), 10) || 1;
+                let totalCost = checkQty * price;
+                
+                if (!isServerOnline || stock === 0 || stock < checkQty) {
+                    btn.disabled = true;
+                } else if (playerCash < totalCost) {
+                    btn.disabled = true;
+                    btn.classList.add('no-money');
+                }
+            });
             
             shopList.appendChild(card);
         });
     }
 
-    async function buyItem(itemKey, btnElement) {
+    async function buyItem(itemKey, btnElement, quantity = 1) {
         if (!isServerOnline || !currentServerId) {
             showMessage("Server is offline. Cannot purchase.", false);
             return;
@@ -346,7 +372,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({
                     serverId: currentServerId,
                     userId: currentUser.userId,
-                    itemKey: itemKey
+                    itemKey: itemKey,
+                    quantity: quantity
                 })
             });
 

@@ -348,6 +348,48 @@ button:hover {
     color: white;
 }
 
+.buy-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.multi-btn {
+    background: #f39c12;
+}
+.multi-btn:hover:not(:disabled) {
+    background: #d68910;
+}
+
+.custom-buy-group {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: #fdfaf6;
+    padding: 0.3rem;
+    border-radius: 8px;
+    border: 1px solid #e8dccf;
+    margin-left: 1rem;
+}
+
+.custom-qty-input {
+    width: 60px;
+    padding: 0.4rem;
+    border: 1px solid #e0d8d0;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #4a3b32;
+    background: white;
+}
+.custom-qty-input:focus {
+    outline: none;
+    border-color: #b8860b;
+}
+
 .buy-btn.loading {
     background: #f39c12;
 }

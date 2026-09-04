@@ -104,14 +104,14 @@ const actionQueues = {}; // { serverId: [ { actionId, action, userId, itemKey } 
 const actionResults = {}; // { actionId: { success, message, newStock } }
 
 app.post('/api/buyItem', async (req, res) => {
-    const { serverId, userId, itemKey } = req.body;
+    const { serverId, userId, itemKey, quantity } = req.body;
     if (!serverId || !userId || !itemKey) return res.status(400).json({ error: 'Missing params' });
     if (!activeServers[serverId]) return res.status(400).json({ error: 'Server offline' });
 
     const actionId = 'act_' + Math.random().toString(36).substr(2, 9);
     
     if (!actionQueues[serverId]) actionQueues[serverId] = [];
-    actionQueues[serverId].push({ actionId, action: 'BUY', userId, itemKey });
+    actionQueues[serverId].push({ actionId, action: 'BUY', userId, itemKey, quantity: quantity || 1 });
 
     // Wait for result (timeout after 15 seconds)
     let attempts = 0;
