@@ -15,11 +15,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Views and Nav
     const indexView = document.getElementById('indexView');
     const shopView = document.getElementById('shopView');
+    const dailyView = document.getElementById('dailyView');
     const navIndexBtn = document.getElementById('navIndexBtn');
     const navShopBtn = document.getElementById('navShopBtn');
+    const navDailyBtn = document.getElementById('navDailyBtn');
     const itemsGrid = document.getElementById('itemsGrid');
     const shopList = document.getElementById('shopList');
     const tabBtns = document.querySelectorAll('.tab-btn');
+    const dailyStreakBadge = document.getElementById('dailyStreakBadge');
+    const dailyTimerBadge = document.getElementById('dailyTimerBadge');
+    const dailySubtitle = document.getElementById('dailySubtitle');
+    const dailyRewardsList = document.getElementById('dailyRewardsList');
     
     // State
     let currentUser = null;
@@ -31,6 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentServerId = null;
     let playerStock = {};
     let playerCash = 0;
+    let playerDailyReward = null;
+    let dailyTimerInterval = null;
     let syncInterval = null;
 
     // Precision Text Fitting (Calculates exact font size so text never overflows and never zooms)
@@ -199,6 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentServerId = data.currentServerId;
             playerStock = data.playerStock || {};
             playerCash = data.playerCash || 0;
+            playerDailyReward = data.dailyReward || null;
             
             if (isServerOnline) {
                 serverStatusDiv.textContent = 'Server: Online';
@@ -209,6 +218,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             playerCashSpan.textContent = `🪙 ${playerCash.toLocaleString('de-DE')}`;
+
+            // Update daily rewards if visible
+            if (!dailyView.classList.contains('hidden')) {
+                renderDailyRewards();
+            }
             
             // Update shop stock in place if visible
             if (!shopView.classList.contains('hidden')) {
@@ -469,19 +483,213 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // --- Daily Rewards Logic ---
+    const DAILY_REWARDS_CONFIG = [
+        { day: 1, text: "1,000 Coins" },
+        { day: 2, text: "Medium Coins Potion" },
+        { day: 3, text: "Medium Shards Potion" },
+        { day: 4, text: "x3 GameSpeed Unlock" },
+        { day: 5, text: "Medium Damage Potion" },
+        { day: 6, text: "25,000 Coins" },
+        { day: 7, text: "Medium Coins, Shards & Damage Potions" }
+    ];
+
+    function formatRemainingTime(seconds) {
+        if (seconds <= 0) return "Ready!";
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function startDailyCountdown(remainingSeconds) {
+        if (dailyTimerInterval) clearInterval(dailyTimerInterval);
+        let remaining = remainingSeconds;
+        
+        const updateTimer = () => {
+            if (remaining <= 0) {
+                if (dailyTimerBadge) {
+                    dailyTimerBadge.textContent = "🎉 Ready to claim!";
+                    dailyTimerBadge.className = "daily-timer-badge ready";
+                }
+                clearInterval(dailyTimerInterval);
+                dailyTimerInterval = null;
+                if (playerDailyReward) playerDailyReward.canClaim = true;
+            } else {
+                if (dailyTimerBadge) {
+                    dailyTimerBadge.textContent = `⏳ Next in: ${formatRemainingTime(remaining)}`;
+                    dailyTimerBadge.className = "daily-timer-badge";
+                }
+                remaining--;
+            }
+        };
+        
+        updateTimer();
+        if (remaining > 0) {
+            dailyTimerInterval = setInterval(updateTimer, 1000);
+        }
+    }
+
+    function renderDailyRewards() {
+        if (!dailyRewardsList) return;
+        
+        const streak = (playerDailyReward && playerDailyReward.streak) || 1;
+        const canClaim = playerDailyReward ? playerDailyReward.canClaim : false;
+        const remaining = (playerDailyReward && playerDailyReward.remainingSeconds) || 0;
+        
+        // Update Header Badges
+        if (dailyStreakBadge) {
+            if (streak <= 7) {
+                dailyStreakBadge.textContent = `Streak: Day ${streak} / 7`;
+                if (dailySubtitle) dailySubtitle.textContent = "Claim your reward every 24 hours to progress your streak!";
+            } else {
+                dailyStreakBadge.textContent = `Streak: 7+ (Daily Bonus)`;
+                if (dailySubtitle) dailySubtitle.textContent = "You completed all 7 days! Enjoy a daily random coin bonus!";
+            }
+        }
+        
+        if (canClaim) {
+            if (dailyTimerBadge) {
+                dailyTimerBadge.textContent = "🎉 Ready to claim!";
+                dailyTimerBadge.className = "daily-timer-badge ready";
+            }
+            if (dailyTimerInterval) {
+                clearInterval(dailyTimerInterval);
+                dailyTimerInterval = null;
+            }
+        } else {
+            startDailyCountdown(remaining);
+        }
+        
+        dailyRewardsList.innerHTML = '';
+        
+        if (streak <= 7) {
+            // Render 7-day progression cards (Text only)
+            DAILY_REWARDS_CONFIG.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'daily-reward-card';
+                
+                let statusHtml = '';
+                if (item.day < streak) {
+                    card.classList.add('claimed');
+                    statusHtml = '<span class="daily-badge claimed">✓ Claimed</span>';
+                } else if (item.day === streak) {
+                    card.classList.add('current');
+                    if (canClaim && isServerOnline) {
+                        statusHtml = '<button class="daily-claim-btn" id="claimDailyBtn">Claim</button>';
+                    } else if (!isServerOnline) {
+                        statusHtml = '<button class="daily-claim-btn" disabled title="Game server offline">Server Offline</button>';
+                    } else {
+                        statusHtml = '<span class="daily-badge cooldown">⏳ In Cooldown</span>';
+                    }
+                } else {
+                    card.classList.add('locked');
+                    statusHtml = '<span class="daily-badge locked">Locked 🔒</span>';
+                }
+                
+                card.innerHTML = `
+                    <div class="daily-reward-info">
+                        <div class="daily-day-label">Day ${item.day}</div>
+                        <div class="daily-reward-text">${item.text}</div>
+                    </div>
+                    <div>${statusHtml}</div>
+                `;
+                dailyRewardsList.appendChild(card);
+            });
+        } else {
+            // Post-Day 7: Single bonus card
+            const card = document.createElement('div');
+            card.className = 'daily-bonus-card';
+            
+            let btnHtml = '';
+            if (canClaim && isServerOnline) {
+                btnHtml = '<button class="daily-claim-btn" id="claimDailyBtn">Claim Daily Bonus</button>';
+            } else if (!isServerOnline) {
+                btnHtml = '<button class="daily-claim-btn" disabled>Game Server Offline</button>';
+            } else {
+                btnHtml = '<button class="daily-claim-btn" disabled>⏳ Cooldown Active</button>';
+            }
+            
+            card.innerHTML = `
+                <div class="daily-bonus-title">🌟 Daily Bonus</div>
+                <div class="daily-bonus-amount">1,000 – 5,000 🪙</div>
+                <div class="daily-bonus-desc">Random coin bonus refreshes every 24 hours!</div>
+                ${btnHtml}
+            `;
+            dailyRewardsList.appendChild(card);
+        }
+        
+        const claimBtn = document.getElementById('claimDailyBtn');
+        if (claimBtn) {
+            claimBtn.addEventListener('click', claimDailyReward);
+        }
+    }
+
+    async function claimDailyReward() {
+        const claimBtn = document.getElementById('claimDailyBtn');
+        if (!claimBtn || !isServerOnline || !currentServerId || !currentUser) return;
+        
+        claimBtn.disabled = true;
+        claimBtn.classList.add('loading');
+        claimBtn.textContent = "Claiming...";
+        
+        try {
+            const res = await fetch('https://build-ur-base-web.onrender.com/api/claimDailyReward', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    serverId: currentServerId,
+                    userId: currentUser.userId
+                })
+            });
+            
+            const data = await res.json();
+            if (res.ok && data.success) {
+                showMessage(`🎉 ${data.message || 'Reward claimed!'}`, true);
+                await fetchLiveStatus();
+                renderDailyRewards();
+            } else {
+                showMessage(data.message || "Failed to claim reward.", false);
+                claimBtn.disabled = false;
+                claimBtn.classList.remove('loading');
+                claimBtn.textContent = "Claim";
+            }
+        } catch (err) {
+            showMessage("Connection error while claiming.", false);
+            claimBtn.disabled = false;
+            claimBtn.classList.remove('loading');
+            claimBtn.textContent = "Claim";
+        }
+    }
+
+    // --- Navigation Listeners ---
     navIndexBtn.addEventListener('click', () => {
         navIndexBtn.classList.add('active');
         navShopBtn.classList.remove('active');
+        navDailyBtn.classList.remove('active');
         indexView.classList.remove('hidden');
         shopView.classList.add('hidden');
+        dailyView.classList.add('hidden');
     });
 
     navShopBtn.addEventListener('click', () => {
         navShopBtn.classList.add('active');
         navIndexBtn.classList.remove('active');
+        navDailyBtn.classList.remove('active');
         shopView.classList.remove('hidden');
         indexView.classList.add('hidden');
+        dailyView.classList.add('hidden');
         renderShopCategory(currentShopCategory);
+    });
+
+    navDailyBtn.addEventListener('click', () => {
+        navDailyBtn.classList.add('active');
+        navIndexBtn.classList.remove('active');
+        navShopBtn.classList.remove('active');
+        dailyView.classList.remove('hidden');
+        indexView.classList.add('hidden');
+        shopView.classList.add('hidden');
+        renderDailyRewards();
     });
 
     let resizeTimer;

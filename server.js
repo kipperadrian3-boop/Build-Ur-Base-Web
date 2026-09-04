@@ -72,6 +72,7 @@ app.get('/api/status/:userId', (req, res) => {
     let currentServerId = null;
     let playerCash = 0;
     let playerStock = {};
+    let dailyReward = null;
     
     // A server is considered online if it sent a heartbeat in the last 2 minutes (120,000 ms)
     for (const [serverId, serverData] of Object.entries(activeServers)) {
@@ -82,6 +83,7 @@ app.get('/api/status/:userId', (req, res) => {
             if (serverData.players[userId]) {
                 playerCash = serverData.players[userId].cash;
                 playerStock = serverData.players[userId].stock || {};
+                dailyReward = serverData.players[userId].dailyReward || null;
                 break;
             }
         } else {
@@ -90,7 +92,7 @@ app.get('/api/status/:userId', (req, res) => {
         }
     }
     
-    res.status(200).json({ isServerOnline, currentServerId, playerCash, playerStock });
+    res.status(200).json({ isServerOnline, currentServerId, playerCash, playerStock, dailyReward, serverTime: Math.floor(now / 1000) });
 });
 
 app.get('/api/debugServers', (req, res) => {
@@ -98,10 +100,10 @@ app.get('/api/debugServers', (req, res) => {
 });
 
 // -------------------------
-// 2-WAY SYNC (REMOTE SHOP)
+// 2-WAY SYNC (REMOTE SHOP & DAILY REWARDS)
 // -------------------------
 const actionQueues = {}; // { serverId: [ { actionId, action, userId, itemKey } ] }
-const actionResults = {}; // { actionId: { success, message, newStock } }
+const actionResults = {}; // { actionId: { success, message, newStock, ... } }
 
 app.post('/api/buyItem', async (req, res) => {
     const { serverId, userId, itemKey, quantity } = req.body;
@@ -131,6 +133,34 @@ app.post('/api/buyItem', async (req, res) => {
     res.status(504).json({ success: false, message: 'Roblox server timed out' });
 });
 
+app.post('/api/claimDailyReward', async (req, res) => {
+    const { serverId, userId } = req.body;
+    if (!serverId || !userId) return res.status(400).json({ error: 'Missing params' });
+    if (!activeServers[serverId]) return res.status(400).json({ error: 'Server offline' });
+
+    const actionId = 'claim_' + Math.random().toString(36).substr(2, 9);
+    
+    if (!actionQueues[serverId]) actionQueues[serverId] = [];
+    actionQueues[serverId].push({ actionId, action: 'CLAIM_DAILY', userId });
+
+    // Wait for result (timeout after 15 seconds)
+    let attempts = 0;
+    while (attempts < 30) {
+        if (actionResults[actionId]) {
+            const result = actionResults[actionId];
+            delete actionResults[actionId];
+            if (result.success) return res.status(200).json(result);
+            else return res.status(400).json(result);
+        }
+        await new Promise(r => setTimeout(r, 500));
+        attempts++;
+    }
+    
+    // Timeout
+    actionQueues[serverId] = actionQueues[serverId].filter(a => a.actionId !== actionId);
+    res.status(504).json({ success: false, message: 'Roblox server timed out' });
+});
+
 app.get('/api/pollActions/:serverId', (req, res) => {
     const { serverId } = req.params;
     const actions = actionQueues[serverId] || [];
@@ -139,9 +169,9 @@ app.get('/api/pollActions/:serverId', (req, res) => {
 });
 
 app.post('/api/actionResult', (req, res) => {
-    const { actionId, success, message, newStock } = req.body;
+    const { actionId, success, message, newStock, reward, newStreak, lastClaimTime, coinsAwarded } = req.body;
     if (actionId) {
-        actionResults[actionId] = { success, message, newStock };
+        actionResults[actionId] = { success, message, newStock, reward, newStreak, lastClaimTime, coinsAwarded };
         res.status(200).json({ message: 'Result accepted' });
     } else {
         res.status(400).json({ error: 'Missing actionId' });
