@@ -356,38 +356,32 @@ button:hover {
     flex-wrap: wrap;
 }
 
-.multi-btn {
-    background: #f39c12;
-}
-.multi-btn:hover:not(:disabled) {
-    background: #d68910;
-}
-
-.custom-buy-group {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    background: #fdfaf6;
-    padding: 0.3rem;
-    border-radius: 8px;
-    border: 1px solid #e8dccf;
-    margin-left: 1rem;
-}
-
-.custom-qty-input {
-    width: 60px;
-    padding: 0.4rem;
+.qty-btn {
+    background: transparent;
+    color: #8c7361;
     border: 1px solid #e0d8d0;
+    padding: 0.4rem 0.6rem;
     border-radius: 6px;
-    text-align: center;
     font-size: 0.9rem;
     font-weight: 600;
-    color: #4a3b32;
-    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
 }
-.custom-qty-input:focus {
-    outline: none;
+
+.qty-btn:hover {
+    background: #fdfaf6;
     border-color: #b8860b;
+}
+
+.qty-btn.selected {
+    background: #fdfaf6;
+    color: #b8860b;
+    border-color: #b8860b;
+    box-shadow: 0 0 5px rgba(184, 134, 11, 0.2);
+}
+
+.execute-buy-btn {
+    margin-left: auto;
 }
 
 .buy-btn.loading {

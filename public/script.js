@@ -192,26 +192,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     const stock = playerStock[key] !== undefined ? playerStock[key] : '?';
                     if (stockDiv) stockDiv.textContent = `Stock: ${stock}`;
                     
-                    const buttons = card.querySelectorAll('.buy-btn');
-                    buttons.forEach(buyBtn => {
-                        if (!buyBtn.classList.contains('loading')) {
-                            buyBtn.classList.remove('no-money');
-                            const price = parseInt(buyBtn.getAttribute('data-price'), 10) || 0;
-                            const qty = parseInt(buyBtn.getAttribute('data-qty') || card.querySelector('.custom-qty-input').value, 10) || 1;
-                            const totalCost = price * qty;
-                            
-                            if (!isServerOnline) {
-                                buyBtn.disabled = true;
-                            } else if (stock === 0 || stock < qty) {
-                                buyBtn.disabled = true;
-                            } else if (playerCash < totalCost) {
-                                buyBtn.disabled = true;
-                                buyBtn.classList.add('no-money');
-                            } else {
-                                buyBtn.disabled = false;
-                            }
+                    const buyBtn = card.querySelector('.execute-buy-btn');
+                    if (buyBtn && !buyBtn.classList.contains('loading')) {
+                        buyBtn.classList.remove('no-money');
+                        const price = parseInt(buyBtn.getAttribute('data-price'), 10) || 0;
+                        const actionsDiv = card.querySelector('.buy-actions');
+                        const qty = parseInt(actionsDiv ? actionsDiv.getAttribute('data-selected-qty') : 1, 10) || 1;
+                        const totalCost = price * qty;
+                        
+                        if (!isServerOnline) {
+                            buyBtn.disabled = true;
+                        } else if (stock === 0 || stock < qty) {
+                            buyBtn.disabled = true;
+                        } else if (playerCash < totalCost) {
+                            buyBtn.disabled = true;
+                            buyBtn.classList.add('no-money');
+                        } else {
+                            buyBtn.disabled = false;
                         }
-                    });
+                    }
                 });
             }
             
@@ -314,39 +313,39 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="shop-item-title">${item.DisplayName || item.Key || 'Unknown'}</div>
                     <div class="shop-item-stock">Stock: ${stock}</div>
                 </div>
-                <div class="buy-actions">
-                    <button class="buy-btn" data-key="${item.Key}" data-qty="1" data-price="${price}">Buy - ${price} 🪙</button>
-                    <button class="buy-btn multi-btn" data-key="${item.Key}" data-qty="${multiQty}" data-price="${price}">x${multiQty} - ${price * multiQty} 🪙</button>
-                    <div class="custom-buy-group">
-                        <input type="number" class="custom-qty-input" min="1" value="1" />
-                        <button class="buy-btn custom-btn" data-key="${item.Key}" data-price="${price}">Buy</button>
-                    </div>
+                <div class="buy-actions" data-selected-qty="1">
+                    <button class="qty-btn selected" data-qty="1">x1 - ${price} 🪙</button>
+                    <button class="qty-btn" data-qty="${multiQty}">x${multiQty} - ${price * multiQty} 🪙</button>
+                    <button class="buy-btn execute-buy-btn" data-key="${item.Key}" data-price="${price}">Buy</button>
                 </div>
             `;
             
-            const buttons = card.querySelectorAll('.buy-btn');
-            buttons.forEach(btn => {
+            const actionsDiv = card.querySelector('.buy-actions');
+            const qtyBtns = card.querySelectorAll('.qty-btn');
+            const executeBtn = card.querySelector('.execute-buy-btn');
+            
+            qtyBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
-                    let qty = parseInt(btn.getAttribute('data-qty'), 10);
-                    if (isNaN(qty)) {
-                        // It's the custom button
-                        qty = parseInt(card.querySelector('.custom-qty-input').value, 10);
-                        if (isNaN(qty) || qty < 1) qty = 1;
-                    }
-                    buyItem(item.Key, btn, qty);
+                    qtyBtns.forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    const qty = parseInt(btn.getAttribute('data-qty'), 10) || 1;
+                    actionsDiv.setAttribute('data-selected-qty', qty);
+                    fetchLiveStatus(); // Force state check to update Buy button color/disabled state
                 });
-                
-                // Initial state check
-                let checkQty = parseInt(btn.getAttribute('data-qty'), 10) || 1;
-                let totalCost = checkQty * price;
-                
-                if (!isServerOnline || stock === 0 || stock < checkQty) {
-                    btn.disabled = true;
-                } else if (playerCash < totalCost) {
-                    btn.disabled = true;
-                    btn.classList.add('no-money');
-                }
             });
+            
+            executeBtn.addEventListener('click', () => {
+                const qty = parseInt(actionsDiv.getAttribute('data-selected-qty'), 10) || 1;
+                buyItem(item.Key, executeBtn, qty);
+            });
+            
+            // Initial state check
+            if (!isServerOnline || stock === 0) {
+                executeBtn.disabled = true;
+            } else if (playerCash < price) {
+                executeBtn.disabled = true;
+                executeBtn.classList.add('no-money');
+            }
             
             shopList.appendChild(card);
         });
