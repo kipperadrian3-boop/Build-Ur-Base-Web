@@ -488,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { day: 1, text: "1,000 Coins" },
         { day: 2, text: "Medium Coins Potion" },
         { day: 3, text: "Medium Shards Potion" },
-        { day: 4, text: "x3 GameSpeed Unlock" },
+        { day: 4, text: "Unlock x3 GameSpeed" },
         { day: 5, text: "Medium Damage Potion" },
         { day: 6, text: "25,000 Coins" },
         { day: 7, text: "Medium Coins, Shards & Damage Potions" }

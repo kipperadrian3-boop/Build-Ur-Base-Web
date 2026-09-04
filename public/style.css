@@ -455,6 +455,13 @@ button:hover {
     color: #6b4c3a;
 }
 /* DAILY REWARDS VIEW */
+#dailyView:not(.hidden) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 0;
+}
+
 .daily-header-card {
     background: #ffffff;
     border: 1px solid #f0e6d8;
@@ -462,6 +469,7 @@ button:hover {
     padding: 1rem;
     box-shadow: 0 4px 12px rgba(110, 83, 60, 0.05);
     margin-bottom: 1rem;
+    flex-shrink: 0;
 }
 
 .daily-header-top {
@@ -501,6 +509,14 @@ button:hover {
 .daily-subtitle {
     font-size: 0.85rem;
     color: #8c7361;
+}
+
+.daily-scroll-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 90px;
+    padding-right: 2px;
 }
 
 .daily-rewards-list {
