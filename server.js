@@ -8,13 +8,15 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // In-Memory Database for codes
-// In production, this should be a real database (MongoDB, PostgreSQL, etc.)
 const codesDB = {}; 
-// Structure: { "1111-2222-3333-4444": { username: "Player1", userId: "123456" } }
+
+// Game Config Data
+let currentConfigVersion = "none";
+let gameConfigs = {};
 
 // 1. Endpoint for Roblox Server to register a code
 app.post('/api/registerCode', (req, res) => {
@@ -24,11 +26,33 @@ app.post('/api/registerCode', (req, res) => {
         return res.status(400).json({ error: 'Missing parameters' });
     }
 
-    // Save the code to our "database"
     codesDB[code] = { username, userId };
     console.log(`[Backend] Code registered for ${username}: ${code}`);
 
     res.status(200).json({ message: 'Code successfully registered' });
+});
+
+// Endpoint: Check Config Version
+app.get('/api/configVersion', (req, res) => {
+    res.status(200).json({ version: currentConfigVersion });
+});
+
+// Endpoint: Update Configs (from Roblox)
+app.post('/api/configs', (req, res) => {
+    const { version, configs } = req.body;
+    if (version && configs) {
+        currentConfigVersion = version;
+        gameConfigs = configs;
+        console.log(`[Backend] Configs updated to version: ${version}`);
+        res.status(200).json({ message: 'Configs updated' });
+    } else {
+        res.status(400).json({ error: 'Invalid config payload' });
+    }
+});
+
+// Endpoint: Get Configs (for Frontend)
+app.get('/api/configs', (req, res) => {
+    res.status(200).json(gameConfigs);
 });
 
 // 2. Endpoint for the Website to login via code

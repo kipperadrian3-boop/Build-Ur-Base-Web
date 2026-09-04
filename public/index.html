@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="login-container">
+    <div class="login-container" id="loginView">
         <div class="logo">
             <h1>Build Ur Base</h1>
             <p>Enter your Web-Code from the Roblox game to log in.</p>
@@ -20,13 +20,43 @@
         </div>
 
         <p id="statusMessage" class="status-message"></p>
-        
-        <div id="dashboard" class="dashboard hidden">
-            <h2>Welcome, <span id="playerName">Player</span>!</h2>
-            <p>You have successfully connected your Roblox account to the website.</p>
+    </div>
+
+    <!-- Main App View (Hidden by default) -->
+    <div id="mainAppView" class="main-app hidden">
+        <!-- Dashboard Profile Header -->
+        <div class="profile-header">
             <div class="avatar-placeholder"></div>
-            <button id="logoutBtn" class="logout-btn">Log Out</button>
+            <div>
+                <h2><span id="playerName">Player</span></h2>
+                <button id="logoutBtn" class="logout-btn">Log Out</button>
+            </div>
         </div>
+
+        <!-- Index View -->
+        <div id="indexView" class="view-content">
+            <div class="top-tabs">
+                <button class="tab-btn active" data-target="Blocks">Blocks</button>
+                <button class="tab-btn" data-target="Decor">Decor</button>
+                <button class="tab-btn" data-target="Defense">Defense</button>
+                <button class="tab-btn" data-target="Chests">Chests</button>
+            </div>
+            <div class="items-grid" id="itemsGrid">
+                <!-- Items injected here by JS -->
+                <p style="text-align:center; padding: 2rem;">Loading data from Roblox...</p>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-view="indexView">
+                <span>Index</span>
+            </button>
+            <button class="nav-btn" data-view="emptyView1"><span>Game</span></button>
+            <button class="nav-btn" data-view="emptyView2"><span>Shop</span></button>
+            <button class="nav-btn" data-view="emptyView3"><span>Clan</span></button>
+            <button class="nav-btn" data-view="emptyView4"><span>Settings</span></button>
+        </nav>
     </div>
     
     <script src="script.js"></script>
