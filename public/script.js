@@ -176,19 +176,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadGameConfigs() {
         try {
-            itemsGrid.innerHTML = '<p style="text-align:center; width:100%;">Loading data from Roblox...</p>';
+            itemsGrid.innerHTML = '';
             const res = await fetch('https://build-ur-base-web.onrender.com/api/configs');
             const data = await res.json();
             
             if (Object.keys(data).length === 0) {
-                itemsGrid.innerHTML = '<p style="text-align:center; width:100%;">No data yet. Join the game on Roblox to sync!</p>';
+                itemsGrid.innerHTML = '';
                 return;
             }
             
             gameConfigs = data;
             renderCategory(currentCategory);
         } catch (err) {
-            itemsGrid.innerHTML = '<p style="text-align:center; color:red; width:100%;">Error loading configs.</p>';
+            itemsGrid.innerHTML = '';
         }
     }
 
