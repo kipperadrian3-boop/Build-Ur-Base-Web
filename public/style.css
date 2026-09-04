@@ -360,13 +360,16 @@ button:hover {
     background: transparent;
     color: #8c7361;
     border: 1px solid #e0d8d0;
-    padding: 0.4rem 0.6rem;
+    padding: 0.4rem 0.2rem;
     border-radius: 6px;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
+    width: 125px;
+    text-align: center;
+    flex-shrink: 0;
 }
 
 .qty-btn:hover {
@@ -383,6 +386,8 @@ button:hover {
 
 .execute-buy-btn {
     margin-left: 0.5rem;
+    width: 80px;
+    flex-shrink: 0;
 }
 
 .buy-btn.loading {
