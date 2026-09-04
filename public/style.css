@@ -362,14 +362,14 @@ button:hover {
     background: transparent;
     color: #8c7361;
     border: 1px solid #e0d8d0;
-    padding: 0 0.25rem;
+    padding: 0 3px;
     border-radius: 6px;
     font-size: 0.78rem;
     font-weight: 600;
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s, color 0.15s;
     white-space: nowrap;
-    width: 86px;
+    width: 90px;
     height: 34px;
     display: inline-flex;
     align-items: center;
@@ -377,8 +377,8 @@ button:hover {
     text-align: center;
     flex-shrink: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
     box-sizing: border-box;
+    letter-spacing: -0.2px;
 }
 
 .qty-btn:hover {

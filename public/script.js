@@ -33,6 +33,32 @@ document.addEventListener('DOMContentLoaded', () => {
     let playerCash = 0;
     let syncInterval = null;
 
+    // Precision Text Fitting (Calculates exact font size so text never overflows and never zooms)
+    const measureCanvas = document.createElement('canvas');
+    const measureCtx = measureCanvas.getContext('2d');
+
+    function calculateFittedFontSize(text, maxWidth = 80, defaultSize = 12.5, minSize = 8.5) {
+        if (!text) return defaultSize;
+        measureCtx.font = `600 ${defaultSize}px Inter, sans-serif`;
+        const textWidth = measureCtx.measureText(text).width;
+        if (textWidth <= maxWidth) {
+            return defaultSize;
+        }
+        const targetSize = (maxWidth / textWidth) * defaultSize;
+        return Math.max(minSize, Math.floor(targetSize * 10) / 10);
+    }
+
+    function setButtonTextFitted(btn, text) {
+        if (!btn) return;
+        const isMobile = window.innerWidth <= 440;
+        const maxWidth = isMobile ? 70 : 81;
+        const fittedSize = calculateFittedFontSize(text, maxWidth, 12.5, 8.5);
+        if (btn.textContent !== text) {
+            btn.textContent = text;
+        }
+        btn.style.fontSize = `${fittedSize}px`;
+    }
+
     // Formatting Code Input
     codeInput.addEventListener('input', (e) => {
         let value = e.target.value.replace(/-/g, '').replace(/[^0-9]/g, '');
@@ -199,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (maxQtyBtn) {
                         const stockNum = stock === '?' ? 99 : stock;
                         maxQtyBtn.setAttribute('data-qty', stockNum);
-                        maxQtyBtn.textContent = `x${stockNum} - ${price * stockNum} 🪙`;
+                        setButtonTextFitted(maxQtyBtn, `x${stockNum} - ${price * stockNum} 🪙`);
                         
                         if (maxQtyBtn.classList.contains('selected')) {
                             const actionsDiv = card.querySelector('.buy-actions');
@@ -348,6 +374,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const actionsDiv = card.querySelector('.buy-actions');
             const qtyBtns = card.querySelectorAll('.qty-btn');
             const executeBtn = card.querySelector('.execute-buy-btn');
+            const q1Btn = card.querySelector('.qty-btn:not(.max-qty-btn)');
+            const maxQtyBtn = card.querySelector('.max-qty-btn');
+            
+            if (q1Btn) setButtonTextFitted(q1Btn, `x1 - ${price} 🪙`);
+            if (maxQtyBtn) setButtonTextFitted(maxQtyBtn, `x${stockNum} - ${price * stockNum} 🪙`);
             
             qtyBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -451,6 +482,21 @@ document.addEventListener('DOMContentLoaded', () => {
         shopView.classList.remove('hidden');
         indexView.classList.add('hidden');
         renderShopCategory(currentShopCategory);
+    });
+
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (!shopView.classList.contains('hidden')) {
+                document.querySelectorAll('.shop-item').forEach(card => {
+                    const q1 = card.querySelector('.qty-btn:not(.max-qty-btn)');
+                    const qMax = card.querySelector('.max-qty-btn');
+                    if (q1) setButtonTextFitted(q1, q1.textContent);
+                    if (qMax) setButtonTextFitted(qMax, qMax.textContent);
+                });
+            }
+        }, 100);
     });
 
 });
