@@ -340,10 +340,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchLiveStatus();
             } else {
                 showMessage(data.message || data.error || "Failed to purchase.", false);
-                btnElement.disabled = false;
-                btnElement.textContent = originalText;
-                btnElement.classList.remove('loading');
             }
+            
+            btnElement.disabled = false;
+            btnElement.textContent = originalText;
+            btnElement.classList.remove('loading');
         } catch (err) {
             showMessage("Network error during purchase.", false);
             btnElement.disabled = false;
