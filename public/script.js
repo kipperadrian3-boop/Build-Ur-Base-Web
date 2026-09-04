@@ -12,14 +12,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logoutBtn');
     const avatarPlaceholder = document.querySelector('.avatar-placeholder');
     
+    // Views and Nav
+    const indexView = document.getElementById('indexView');
+    const shopView = document.getElementById('shopView');
+    const navIndexBtn = document.getElementById('navIndexBtn');
+    const navShopBtn = document.getElementById('navShopBtn');
     const itemsGrid = document.getElementById('itemsGrid');
+    const shopList = document.getElementById('shopList');
     const tabBtns = document.querySelectorAll('.tab-btn');
     
     // State
     let gameConfigs = null;
     let currentCategory = 'Blocks';
+    let currentShopCategory = 'Blocks';
     let currentUser = null;
     let syncInterval = null;
+    let playerStock = {};
+    let currentServerId = null;
+    let isServerOnline = false;
 
     // Formatting Code Input
     codeInput.addEventListener('input', (e) => {
@@ -157,7 +167,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('https://build-ur-base-web.onrender.com/api/status/' + currentUser.userId);
             const data = await res.json();
             
-            if (data.isServerOnline) {
+            isServerOnline = data.isServerOnline;
+            currentServerId = data.currentServerId;
+            playerStock = data.playerStock || {};
+            
+            if (isServerOnline) {
                 serverStatusDiv.textContent = 'Server: Online';
                 serverStatusDiv.className = 'status-indicator online';
             } else {
@@ -166,9 +180,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             playerCashSpan.textContent = `🪙 ${data.playerCash.toLocaleString('de-DE')}`;
+            
+            // Re-render shop if it's visible so stock updates live
+            if (!shopView.classList.contains('hidden')) {
+                renderShopCategory(currentShopCategory);
+            }
+            
         } catch (err) {
             serverStatusDiv.textContent = 'Server: Disconnected';
             serverStatusDiv.className = 'status-indicator offline';
+            isServerOnline = false;
         }
     }
 
@@ -193,10 +214,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderCategory(category) {
-        if (!gameConfigs || !gameConfigs[category]) return;
+        document.querySelectorAll('#indexView .tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`#indexView .tab-btn[data-tab="${category}"]`).classList.add('active');
         
         itemsGrid.innerHTML = '';
+        
         const items = gameConfigs[category];
+        if (!items) return;
         
         // Convert to array and sort by Order
         const sortedItems = Object.values(items).sort((a, b) => (a.Order || 0) - (b.Order || 0));
@@ -229,14 +253,120 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Tab Clicks
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            tabBtns.forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
+    // --- Shop Logic ---
+    
+    function renderShopCategory(category) {
+        if (!gameConfigs) return;
+        
+        document.querySelectorAll('#shopView .tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`#shopView .tab-btn[data-shoptab="${category}"]`).classList.add('active');
+        
+        shopList.innerHTML = '';
+        
+        const items = gameConfigs[category];
+        if (!items) return;
+
+        const sortedItems = Object.values(items).sort((a, b) => (a.Order || 0) - (b.Order || 0));
+
+        sortedItems.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'shop-item';
             
-            currentCategory = e.target.getAttribute('data-target');
+            const stock = playerStock[item.Name] !== undefined ? playerStock[item.Name] : '?';
+            
+            card.innerHTML = `
+                ${item.imageUrl ? `<img src="${item.imageUrl}" style="width: 50px; height: 50px; border-radius: 6px;" alt="${item.DisplayName || item.Name}">` : ''}
+                <div class="shop-item-info">
+                    <div class="shop-item-title">${item.DisplayName || item.Name || 'Unknown'}</div>
+                    <div class="shop-item-stock">Stock: ${stock}</div>
+                </div>
+                <button class="buy-btn" data-key="${item.Name}">Buy - ${item.Price || 0} 🪙</button>
+            `;
+            
+            const buyBtn = card.querySelector('.buy-btn');
+            buyBtn.addEventListener('click', () => buyItem(item.Name, buyBtn));
+            
+            if (!isServerOnline || stock === 0) {
+                buyBtn.disabled = true;
+            }
+            
+            shopList.appendChild(card);
+        });
+    }
+
+    async function buyItem(itemKey, btnElement) {
+        if (!isServerOnline || !currentServerId) {
+            showMessage("Server is offline. Cannot purchase.", false);
+            return;
+        }
+
+        btnElement.disabled = true;
+        const originalText = btnElement.textContent;
+        btnElement.textContent = "Buying...";
+        btnElement.classList.add('loading');
+        
+        showMessage("", false);
+
+        try {
+            const res = await fetch('https://build-ur-base-web.onrender.com/api/buyItem', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    serverId: currentServerId,
+                    userId: currentUser.userId,
+                    itemKey: itemKey
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                showMessage(`Successfully bought ${itemKey}!`, true);
+                // Immediately force a live status fetch to update cash/stock
+                fetchLiveStatus();
+            } else {
+                showMessage(data.message || data.error || "Failed to purchase.", false);
+                btnElement.disabled = false;
+                btnElement.textContent = originalText;
+                btnElement.classList.remove('loading');
+            }
+        } catch (err) {
+            showMessage("Network error during purchase.", false);
+            btnElement.disabled = false;
+            btnElement.textContent = originalText;
+            btnElement.classList.remove('loading');
+        }
+    }
+
+    // --- Listeners ---
+
+    document.querySelectorAll('#indexView .tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            currentCategory = e.target.getAttribute('data-tab');
             renderCategory(currentCategory);
         });
     });
+
+    document.querySelectorAll('#shopView .tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            currentShopCategory = e.target.getAttribute('data-shoptab');
+            renderShopCategory(currentShopCategory);
+        });
+    });
+
+    navIndexBtn.addEventListener('click', () => {
+        navIndexBtn.classList.add('active');
+        navShopBtn.classList.remove('active');
+        indexView.classList.remove('hidden');
+        shopView.classList.add('hidden');
+    });
+
+    navShopBtn.addEventListener('click', () => {
+        navShopBtn.classList.add('active');
+        navIndexBtn.classList.remove('active');
+        shopView.classList.remove('hidden');
+        indexView.classList.add('hidden');
+        renderShopCategory(currentShopCategory);
+    });
+
 });

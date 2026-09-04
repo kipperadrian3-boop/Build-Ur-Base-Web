@@ -69,15 +69,19 @@ app.get('/api/status/:userId', (req, res) => {
     const userId = req.params.userId;
     const now = Date.now();
     let isServerOnline = false;
+    let currentServerId = null;
     let playerCash = 0;
+    let playerStock = {};
     
     // A server is considered online if it sent a heartbeat in the last 2 minutes (120,000 ms)
     for (const [serverId, serverData] of Object.entries(activeServers)) {
         if (now - serverData.lastSeen < 120000) {
             isServerOnline = true;
+            currentServerId = serverId;
             // Check if our player is in this server
             if (serverData.players[userId]) {
                 playerCash = serverData.players[userId].cash;
+                playerStock = serverData.players[userId].stock || {};
                 break;
             }
         } else {
@@ -86,7 +90,58 @@ app.get('/api/status/:userId', (req, res) => {
         }
     }
     
-    res.status(200).json({ isServerOnline, playerCash });
+    res.status(200).json({ isServerOnline, currentServerId, playerCash, playerStock });
+});
+
+// -------------------------
+// 2-WAY SYNC (REMOTE SHOP)
+// -------------------------
+const actionQueues = {}; // { serverId: [ { actionId, action, userId, itemKey } ] }
+const actionResults = {}; // { actionId: { success, message, newStock } }
+
+app.post('/api/buyItem', async (req, res) => {
+    const { serverId, userId, itemKey } = req.body;
+    if (!serverId || !userId || !itemKey) return res.status(400).json({ error: 'Missing params' });
+    if (!activeServers[serverId]) return res.status(400).json({ error: 'Server offline' });
+
+    const actionId = 'act_' + Math.random().toString(36).substr(2, 9);
+    
+    if (!actionQueues[serverId]) actionQueues[serverId] = [];
+    actionQueues[serverId].push({ actionId, action: 'BUY', userId, itemKey });
+
+    // Wait for result (timeout after 15 seconds)
+    let attempts = 0;
+    while (attempts < 30) {
+        if (actionResults[actionId]) {
+            const result = actionResults[actionId];
+            delete actionResults[actionId];
+            if (result.success) return res.status(200).json(result);
+            else return res.status(400).json(result);
+        }
+        await new Promise(r => setTimeout(r, 500));
+        attempts++;
+    }
+    
+    // Timeout
+    actionQueues[serverId] = actionQueues[serverId].filter(a => a.actionId !== actionId);
+    res.status(504).json({ success: false, message: 'Roblox server timed out' });
+});
+
+app.get('/api/pollActions/:serverId', (req, res) => {
+    const { serverId } = req.params;
+    const actions = actionQueues[serverId] || [];
+    actionQueues[serverId] = []; // Clear queue
+    res.status(200).json({ actions });
+});
+
+app.post('/api/actionResult', (req, res) => {
+    const { actionId, success, message, newStock } = req.body;
+    if (actionId) {
+        actionResults[actionId] = { success, message, newStock };
+        res.status(200).json({ message: 'Result accepted' });
+    } else {
+        res.status(400).json({ error: 'Missing actionId' });
+    }
 });
 
 // -------------------------
