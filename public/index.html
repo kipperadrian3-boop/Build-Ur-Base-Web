@@ -1,0 +1,34 @@
+<!DOCTYPE string>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Build Ur Base - Login</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <h1>Build Ur Base</h1>
+            <p>Enter your Web-Code from the Roblox game to log in.</p>
+        </div>
+        
+        <div class="input-group">
+            <input type="text" id="codeInput" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="19" autocomplete="off">
+            <button id="loginBtn">Connect</button>
+        </div>
+
+        <p id="statusMessage" class="status-message"></p>
+        
+        <div id="dashboard" class="dashboard hidden">
+            <h2>Welcome, <span id="playerName">Player</span>!</h2>
+            <p>You have successfully connected your Roblox account to the website.</p>
+            <div class="avatar-placeholder"></div>
+            <button id="logoutBtn" class="logout-btn">Log Out</button>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
