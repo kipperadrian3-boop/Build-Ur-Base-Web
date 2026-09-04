@@ -70,7 +70,7 @@ app.post('/api/login', async (req, res) => {
 
         res.status(200).json({ success: true, user: { ...userData, avatarUrl: avatarUrl } });
     } else {
-        res.status(401).json({ success: false, error: 'Invalid or expired code' });
+        res.status(401).json({ success: false, error: 'Code not found. You must be in-game to connect!' });
     }
 });
 
