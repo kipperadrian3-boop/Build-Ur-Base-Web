@@ -17,6 +17,10 @@ const codesDB = {};
 // Game Config Data (Hardcoded to avoid dependency on Roblox server being online)
 const fs = require('fs');
 let gameConfigs = {};
+
+// Live Server Sync Data
+const activeServers = {}; // Format: { serverId: { lastSeen: Date.now(), players: { "userId": { cash: 100 } } } }
+
 try {
     const data = fs.readFileSync(path.join(__dirname, 'configs.json'), 'utf8');
     gameConfigs = JSON.parse(data);
@@ -27,6 +31,65 @@ try {
 } catch (e) {
     console.error("[Backend] Could not load configs.json", e);
 }
+
+// -------------------------
+// LIVE SYNC ENDPOINTS
+// -------------------------
+
+// 1. Heartbeat from Roblox Server
+app.post('/api/serverSync', (req, res) => {
+    const { serverId, players } = req.body;
+    if (serverId && players) {
+        activeServers[serverId] = {
+            lastSeen: Date.now(),
+            players: players
+        };
+        res.status(200).json({ message: 'Heartbeat received' });
+    } else {
+        res.status(400).json({ error: 'Invalid payload' });
+    }
+});
+
+// 2. Immediate Player Stat Update
+app.post('/api/updatePlayerStats', (req, res) => {
+    const { serverId, userId, cash } = req.body;
+    if (serverId && userId && activeServers[serverId]) {
+        if (!activeServers[serverId].players[userId]) {
+            activeServers[serverId].players[userId] = {};
+        }
+        activeServers[serverId].players[userId].cash = cash;
+        res.status(200).json({ message: 'Player stats updated' });
+    } else {
+        res.status(400).json({ error: 'Server or User not found' });
+    }
+});
+
+// 3. Frontend Polling Endpoint
+app.get('/api/status/:userId', (req, res) => {
+    const userId = req.params.userId;
+    const now = Date.now();
+    let isServerOnline = false;
+    let playerCash = 0;
+    
+    // A server is considered online if it sent a heartbeat in the last 2 minutes (120,000 ms)
+    for (const [serverId, serverData] of Object.entries(activeServers)) {
+        if (now - serverData.lastSeen < 120000) {
+            isServerOnline = true;
+            // Check if our player is in this server
+            if (serverData.players[userId]) {
+                playerCash = serverData.players[userId].cash;
+                break;
+            }
+        } else {
+            // Clean up stale servers
+            delete activeServers[serverId];
+        }
+    }
+    
+    res.status(200).json({ isServerOnline, playerCash });
+});
+
+// -------------------------
 
 async function fetchThumbnails() {
     let assetIds = [];

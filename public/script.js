@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginBtn = document.getElementById('loginBtn');
     const statusMessage = document.getElementById('statusMessage');
     const playerNameSpan = document.getElementById('playerName');
+    const playerCashSpan = document.getElementById('playerCash');
+    const serverStatusDiv = document.getElementById('serverStatus');
     const logoutBtn = document.getElementById('logoutBtn');
     const avatarPlaceholder = document.querySelector('.avatar-placeholder');
     
@@ -16,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // State
     let gameConfigs = null;
     let currentCategory = 'Blocks';
+    let currentUser = null;
+    let syncInterval = null;
 
     // Formatting Code Input
     codeInput.addEventListener('input', (e) => {
@@ -35,18 +39,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (savedCode && savedUser) {
         // Bypass the server check entirely because the user was already validated before
-        const userData = JSON.parse(savedUser);
+        currentUser = JSON.parse(savedUser);
         codeInput.value = savedCode;
         
         loginView.classList.add('hidden');
         mainAppView.classList.remove('hidden');
         
-        playerNameSpan.textContent = userData.username;
-        if (userData.avatarUrl) {
-            avatarPlaceholder.style.backgroundImage = `url('${userData.avatarUrl}')`;
+        playerNameSpan.textContent = currentUser.username;
+        if (currentUser.avatarUrl) {
+            avatarPlaceholder.style.backgroundImage = `url('${currentUser.avatarUrl}')`;
         }
         
         loadGameConfigs();
+        startLiveSync();
     } else if (savedCode) {
         // Fallback for older sessions
         codeInput.value = savedCode;
@@ -78,23 +83,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.success) {
                 // Save EVERYTHING to local storage so user stays logged in offline
-                localStorage.setItem('roblox_web_code', code);
-                localStorage.setItem('roblox_web_user', JSON.stringify({
+                currentUser = {
                     username: data.user.username,
-                    avatarUrl: data.user.avatarUrl
-                }));
+                    avatarUrl: data.user.avatarUrl,
+                    userId: data.user.userId
+                };
+                localStorage.setItem('roblox_web_code', code);
+                localStorage.setItem('roblox_web_user', JSON.stringify(currentUser));
                 
                 // Show Main App
                 loginView.classList.add('hidden');
                 mainAppView.classList.remove('hidden');
                 
-                playerNameSpan.textContent = data.user.username;
-                if (data.user.avatarUrl) {
-                    avatarPlaceholder.style.backgroundImage = `url('${data.user.avatarUrl}')`;
+                playerNameSpan.textContent = currentUser.username;
+                if (currentUser.avatarUrl) {
+                    avatarPlaceholder.style.backgroundImage = `url('${currentUser.avatarUrl}')`;
                 }
 
-                // Fetch Game Configs
+                // Fetch Game Configs and start sync
                 loadGameConfigs();
+                startLiveSync();
                 
             } else {
                 localStorage.removeItem('roblox_web_code');
@@ -115,6 +123,8 @@ document.addEventListener('DOMContentLoaded', () => {
     logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('roblox_web_code');
         localStorage.removeItem('roblox_web_user');
+        currentUser = null;
+        stopLiveSync();
         mainAppView.classList.add('hidden');
         loginView.classList.remove('hidden');
         codeInput.value = "";
@@ -124,6 +134,42 @@ document.addEventListener('DOMContentLoaded', () => {
     function showMessage(msg, isSuccess) {
         statusMessage.textContent = msg;
         statusMessage.className = isSuccess ? 'status-message success' : 'status-message';
+    }
+
+    // --- Live Sync Logic ---
+
+    function startLiveSync() {
+        if (syncInterval) stopLiveSync();
+        fetchLiveStatus(); // immediate fetch
+        syncInterval = setInterval(fetchLiveStatus, 5000); // Every 5 seconds
+    }
+
+    function stopLiveSync() {
+        if (syncInterval) {
+            clearInterval(syncInterval);
+            syncInterval = null;
+        }
+    }
+
+    async function fetchLiveStatus() {
+        if (!currentUser || !currentUser.userId) return;
+        try {
+            const res = await fetch('https://build-ur-base-web.onrender.com/api/status/' + currentUser.userId);
+            const data = await res.json();
+            
+            if (data.isServerOnline) {
+                serverStatusDiv.textContent = 'Server: Online';
+                serverStatusDiv.className = 'status-indicator online';
+            } else {
+                serverStatusDiv.textContent = 'Server: Offline';
+                serverStatusDiv.className = 'status-indicator offline';
+            }
+            
+            playerCashSpan.textContent = `🪙 ${data.playerCash.toLocaleString('de-DE')}`;
+        } catch (err) {
+            serverStatusDiv.textContent = 'Server: Disconnected';
+            serverStatusDiv.className = 'status-indicator offline';
+        }
     }
 
     // --- Index & Config Logic ---
