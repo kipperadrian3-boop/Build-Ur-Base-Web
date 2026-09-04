@@ -352,8 +352,8 @@ button:hover {
     display: flex;
     gap: 0.5rem;
     align-items: center;
-    margin-top: 0.5rem;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    margin-left: auto;
 }
 
 .qty-btn {
@@ -366,6 +366,7 @@ button:hover {
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .qty-btn:hover {
@@ -381,7 +382,7 @@ button:hover {
 }
 
 .execute-buy-btn {
-    margin-left: auto;
+    margin-left: 0.5rem;
 }
 
 .buy-btn.loading {
