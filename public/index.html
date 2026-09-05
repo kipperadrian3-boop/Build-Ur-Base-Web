@@ -34,7 +34,13 @@
                 </div>
                 <button id="logoutBtn" class="logout-btn">Log Out</button>
             </div>
-            <div class="status-indicator-container">
+            <div class="header-right-actions">
+                <button id="topLeaderboardBtn" class="top-leaderboard-btn" title="Global Leaderboards">
+                    <span class="leaderboard-trophy">🏆</span>
+                    <span class="leaderboard-btn-text">Leaderboard</span>
+                </button>
+            </div>
+            <div class="status-indicator-container" style="display: none !important;">
                 <div id="serverStatus" class="status-indicator offline">Server: Offline</div>
             </div>
         </div>
@@ -182,6 +188,34 @@
                     </div>
 
                     <button id="mktCreateBtn" class="mkt-create-btn" disabled>Create (0 🪙 Fee)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leaderboard Modal Window -->
+        <div id="leaderboardModal" class="leaderboard-modal-overlay hidden">
+            <div class="leaderboard-modal-card">
+                <div class="leaderboard-modal-header">
+                    <div class="leaderboard-header-title">
+                        <span class="lb-title-icon">🏆</span>
+                        <div>
+                            <h3>Leaderboard</h3>
+                            <p class="lb-subtitle">Top Base Builders & Survivors</p>
+                        </div>
+                    </div>
+                    <button id="closeLeaderboardBtn" class="leaderboard-close-btn" title="Close">✕</button>
+                </div>
+
+                <!-- Tabs: Coins / Waves / Streak -->
+                <div class="leaderboard-tabs">
+                    <button class="lb-tab-btn active" data-board="coins">🪙 Coins</button>
+                    <button class="lb-tab-btn" data-board="waves">🌊 Highest Wave</button>
+                    <button class="lb-tab-btn" data-board="streak">🔥 Daily Streak</button>
+                </div>
+
+                <!-- Leaderboard List -->
+                <div class="leaderboard-list" id="leaderboardList">
+                    <div class="lb-loading">Loading rankings...</div>
                 </div>
             </div>
         </div>

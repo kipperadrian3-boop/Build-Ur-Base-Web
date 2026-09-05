@@ -51,6 +51,55 @@ const marketplaceOfferSchema = new mongoose.Schema({
 const MarketplaceOffer = mongoose.model('MarketplaceOffer', marketplaceOfferSchema);
 const inMemoryMarketplaceOffers = [];
 
+// Leaderboard Schema & Storage
+const leaderboardPlayerSchema = new mongoose.Schema({
+    userId: { type: String, required: true, unique: true },
+    username: { type: String, required: true },
+    avatarUrl: { type: String, default: '' },
+    coins: { type: Number, default: 0 },
+    highestWave: { type: Number, default: 1 },
+    streak: { type: Number, default: 1 },
+    updatedAt: { type: Date, default: Date.now }
+});
+const LeaderboardPlayer = mongoose.model('LeaderboardPlayer', leaderboardPlayerSchema);
+
+const inMemoryLeaderboard = {};
+
+async function updateLeaderboardPlayer(userId, username, stats = {}) {
+    if (!userId) return;
+    const uid = String(userId);
+
+    let existing = inMemoryLeaderboard[uid] || {
+        userId: uid,
+        username: username || `Player_${uid}`,
+        avatarUrl: `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${uid}&size=150x150&format=Png&isCircular=false`,
+        coins: 0,
+        highestWave: 1,
+        streak: 1
+    };
+
+    if (username) existing.username = username;
+    if (stats.coins !== undefined) existing.coins = Math.max(existing.coins, Number(stats.coins) || 0);
+    if (stats.highestWave !== undefined) existing.highestWave = Math.max(existing.highestWave, Number(stats.highestWave) || 1);
+    if (stats.streak !== undefined) existing.streak = Math.max(existing.streak, Number(stats.streak) || 1);
+    if (stats.avatarUrl) existing.avatarUrl = stats.avatarUrl;
+    existing.updatedAt = Date.now();
+
+    inMemoryLeaderboard[uid] = existing;
+
+    try {
+        if (mongoose.connection.readyState === 1) {
+            await LeaderboardPlayer.findOneAndUpdate(
+                { userId: uid },
+                { $set: existing },
+                { upsert: true, new: true }
+            );
+        }
+    } catch (e) {
+        // Fallback to in-memory silently
+    }
+}
+
 // In-Memory Database for codes
 const codesDB = {};
 
@@ -114,6 +163,7 @@ async function getRobloxPlayerData(userId) {
             return {
                 isOnline: false,
                 cash: rawData.Coins || 0,
+                highestWave: rawData.HighestWave || 1,
                 stock: {},
                 inventory: rawData.Inventory || {},
                 dailyReward: null,
@@ -131,6 +181,7 @@ async function getRobloxPlayerData(userId) {
         return {
             isOnline: false,
             cash: cached.data.Coins || 0,
+            highestWave: cached.data.HighestWave || 1,
             stock: {},
             inventory: cached.data.Inventory || {},
             dailyReward: null,
@@ -409,6 +460,13 @@ app.get('/api/status/:userId', async (req, res) => {
     const playerData = await getRobloxPlayerData(userId);
     const dailyData = await getDailyRewardData(userId);
     const stockData = await getPlayerStockData(userId);
+
+    // Update player stats in leaderboard cache
+    updateLeaderboardPlayer(userId, null, {
+        coins: playerData.cash,
+        highestWave: playerData.highestWave || (playerData.raw && playerData.raw.HighestWave) || 1,
+        streak: (dailyData && dailyData.streak) || 1
+    });
     
     res.status(200).json({
         isServerOnline: isGameServerRunning || true, // Website stays functional 24/7 via Open Cloud
@@ -421,6 +479,45 @@ app.get('/api/status/:userId', async (req, res) => {
         playerInventory: playerData.inventory,
         dailyReward: dailyData,
         serverTime: Math.floor(now / 1000)
+    });
+});
+
+// Endpoint: Global Leaderboard
+app.get('/api/leaderboard', async (req, res) => {
+    let allPlayers = Object.values(inMemoryLeaderboard);
+
+    if (mongoose.connection.readyState === 1) {
+        try {
+            const dbPlayers = await LeaderboardPlayer.find().lean();
+            if (dbPlayers && dbPlayers.length > 0) {
+                const map = { ...inMemoryLeaderboard };
+                dbPlayers.forEach(p => { map[p.userId] = { ...map[p.userId], ...p }; });
+                allPlayers = Object.values(map);
+            }
+        } catch (e) {
+            console.error('[Leaderboard] Error querying MongoDB:', e);
+        }
+    }
+
+    const topCoins = [...allPlayers]
+        .sort((a, b) => (b.coins || 0) - (a.coins || 0))
+        .slice(0, 20)
+        .map((p, i) => ({ rank: i + 1, userId: p.userId, username: p.username, avatarUrl: p.avatarUrl, value: p.coins || 0 }));
+
+    const topWaves = [...allPlayers]
+        .sort((a, b) => (b.highestWave || 0) - (a.highestWave || 0))
+        .slice(0, 20)
+        .map((p, i) => ({ rank: i + 1, userId: p.userId, username: p.username, avatarUrl: p.avatarUrl, value: p.highestWave || 1 }));
+
+    const topStreak = [...allPlayers]
+        .sort((a, b) => (b.streak || 0) - (a.streak || 0))
+        .slice(0, 20)
+        .map((p, i) => ({ rank: i + 1, userId: p.userId, username: p.username, avatarUrl: p.avatarUrl, value: p.streak || 1 }));
+
+    res.status(200).json({
+        coins: topCoins,
+        waves: topWaves,
+        streak: topStreak
     });
 });
 
@@ -1182,6 +1279,10 @@ app.post('/api/login', async (req, res) => {
         } catch (err) {
             console.error('[Backend] Fehler beim Laden des Avatars:', err);
         }
+
+        updateLeaderboardPlayer(userData.userId, userData.username, {
+            avatarUrl: avatarUrl
+        });
 
         res.status(200).json({ success: true, user: { ...userData, avatarUrl: avatarUrl } });
     } else {
