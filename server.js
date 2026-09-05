@@ -122,9 +122,8 @@ app.get('/api/debugServers', (req, res) => {
 // -------------------------
 const auctionConfig = [
     // Blocks
-    { key: 'Metal Block', category: 'Blocks', start: 1000, up: 100, qty: 5 },
-    { key: 'Stone Block', category: 'Blocks', start: 200, up: 25, qty: 20 },
-    { key: 'Block', category: 'Blocks', start: 50, up: 10, qty: 50 },
+    { key: 'Metal Block', category: 'Blocks', start: 30000, up: 500, qty: 50 },//--50x1000=50k
+    { key: 'Stone Block', category: 'Blocks', start: 11250, up: 250, qty: 75 },//--75x150=11250
 
     // Defense Turrets & Weapons
     { key: 'Flamethrower', category: 'Defense', start: 10000, up: 500, qty: 1 },
