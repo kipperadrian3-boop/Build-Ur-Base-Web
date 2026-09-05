@@ -2,6 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
+const mongoose = require('mongoose');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,8 +13,24 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// MongoDB Connection
+const MONGO_URI = process.env.MONGO_URI || "DEINE_DATENBANK_URL_HIER_EINFUEGEN";
+mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => console.log("[Backend] MongoDB erfolgreich verbunden!"))
+    .catch(err => console.log("[Backend] MongoDB Fehler (Auktionen werden nicht gespeichert wenn offline):", err));
+
+// MongoDB Schema for Pending Auctions
+const pendingAuctionSchema = new mongoose.Schema({
+    userId: String,
+    itemKey: String,
+    quantity: Number,
+    cost: Number,
+    createdAt: { type: Date, default: Date.now }
+});
+const PendingAuction = mongoose.model('PendingAuction', pendingAuctionSchema);
+
 // In-Memory Database for codes
-const codesDB = {}; 
+const codesDB = {};
 
 // Game Config Data (Hardcoded to avoid dependency on Roblox server being online)
 const fs = require('fs');
@@ -74,9 +92,9 @@ app.get('/api/status/:userId', (req, res) => {
     let playerStock = {};
     let dailyReward = null;
     
-    // A server is considered online if it sent a heartbeat in the last 2 minutes (120,000 ms)
+    // A server is considered online if it sent a heartbeat in the last 10 seconds (10,000 ms)
     for (const [serverId, serverData] of Object.entries(activeServers)) {
-        if (now - serverData.lastSeen < 120000) {
+        if (now - serverData.lastSeen < 10000) {
             isServerOnline = true;
             currentServerId = serverId;
             // Check if our player is in this server
@@ -97,6 +115,159 @@ app.get('/api/status/:userId', (req, res) => {
 
 app.get('/api/debugServers', (req, res) => {
     res.status(200).json(activeServers);
+});
+
+// -------------------------
+// GLOBAL AUCTION SYSTEM
+// -------------------------
+const auctionConfig = [
+    { key: 'Metal Block', category: 'Blocks', start: 1000, up: 100, minQty: 1, maxQty: 5 },
+    { key: 'Wood Block', category: 'Blocks', start: 500, up: 50, minQty: 5, maxQty: 10 },
+    { key: 'Spike', category: 'Defense', start: 2000, up: 200, minQty: 1, maxQty: 3 },
+    { key: 'Small Chest', category: 'Chests', start: 3000, up: 500, minQty: 1, maxQty: 1 },
+    { key: 'Plant', category: 'Decor', start: 150, up: 20, minQty: 1, maxQty: 5 },
+    { key: 'Turret', category: 'Defense', start: 5000, up: 500, minQty: 1, maxQty: 2 }
+];
+
+let currentAuction = {
+    item: null,
+    category: null,
+    qty: 0,
+    startPrice: 0,
+    currentBid: 0,
+    highestBidderId: null,
+    highestBidderName: null,
+    endTime: 0,
+    step: 0
+};
+
+function getNext10MinuteMark() {
+    const d = new Date();
+    d.setMinutes(Math.ceil((d.getMinutes() + 1) / 10) * 10);
+    d.setSeconds(0);
+    d.setMilliseconds(0);
+    return d.getTime();
+}
+
+function startNewAuction() {
+    const config = auctionConfig[Math.floor(Math.random() * auctionConfig.length)];
+    const qty = Math.floor(Math.random() * (config.maxQty - config.minQty + 1)) + config.minQty;
+    
+    currentAuction = {
+        item: config.key,
+        category: config.category,
+        qty: qty,
+        startPrice: config.start,
+        currentBid: 0,
+        highestBidderId: null,
+        highestBidderName: null,
+        endTime: getNext10MinuteMark(),
+        step: config.up
+    };
+    console.log(`[Auction] Started new auction: ${qty}x ${config.key}, Ends at: ${new Date(currentAuction.endTime).toLocaleTimeString()}`);
+}
+startNewAuction();
+
+async function resolveAuction() {
+    if (currentAuction.highestBidderId) {
+        // Validate if they still have enough cash!
+        const userId = currentAuction.highestBidderId;
+        const bid = currentAuction.currentBid;
+        let hasMoney = false;
+
+        for (const server of Object.values(activeServers)) {
+            if (server.players[userId] && server.players[userId].cash >= bid) {
+                hasMoney = true;
+                break;
+            }
+        }
+
+        if (hasMoney) {
+            console.log(`[Auction] ${currentAuction.highestBidderName} won ${currentAuction.qty}x ${currentAuction.item} for ${bid}!`);
+            
+            // Check if any server is online
+            const activeServerIds = Object.keys(activeServers);
+            if (activeServerIds.length > 0) {
+                const targetServerId = activeServerIds[0];
+                if (!actionQueues[targetServerId]) actionQueues[targetServerId] = [];
+                
+                actionQueues[targetServerId].push({
+                    actionId: 'auc_' + Math.random().toString(36).substr(2, 9),
+                    action: 'AUCTION_WIN',
+                    userId: userId,
+                    itemKey: currentAuction.item,
+                    quantity: currentAuction.qty,
+                    cost: bid
+                });
+                console.log(`[Auction] Sent win to Roblox Server ${targetServerId}`);
+            } else {
+                console.log(`[Auction] NO SERVERS ONLINE! Saving win to MongoDB for ${userId}.`);
+                if (mongoose.connection.readyState === 1) {
+                    try {
+                        const pending = new PendingAuction({
+                            userId: userId,
+                            itemKey: currentAuction.item,
+                            quantity: currentAuction.qty,
+                            cost: bid
+                        });
+                        await pending.save();
+                    } catch(err) {
+                        console.error("[Auction] Failed to save pending auction:", err);
+                    }
+                }
+            }
+        } else {
+            console.log(`[Auction] CANCELED! ${currentAuction.highestBidderName} won but didn't have ${bid} coins anymore.`);
+        }
+    } else {
+        console.log("[Auction] Ended with no bidders.");
+    }
+    startNewAuction();
+}
+
+// Auction loop
+setInterval(() => {
+    if (Date.now() >= currentAuction.endTime) {
+        resolveAuction();
+    }
+}, 1000);
+
+app.get('/api/auction/status', (req, res) => {
+    res.json({
+        ...currentAuction,
+        serverTime: Date.now()
+    });
+});
+
+app.post('/api/auction/bid', (req, res) => {
+    const { userId, username, bidAmount } = req.body;
+    if (!userId || !bidAmount) return res.status(400).json({ error: 'Missing params' });
+
+    // Validate if bid is high enough
+    const minRequiredBid = currentAuction.highestBidderId ? (currentAuction.currentBid + currentAuction.step) : currentAuction.startPrice;
+    if (bidAmount < minRequiredBid) {
+        return res.status(400).json({ error: 'Bid is too low.' });
+    }
+
+    // Check if player has the money across all servers
+    let actualCash = 0;
+    for (const server of Object.values(activeServers)) {
+        if (server.players[userId]) {
+            actualCash = server.players[userId].cash;
+            break;
+        }
+    }
+
+    if (actualCash < bidAmount) {
+        return res.status(400).json({ error: 'Not enough in-game coins!' });
+    }
+
+    currentAuction.highestBidderId = userId;
+    currentAuction.highestBidderName = username;
+    currentAuction.currentBid = bidAmount;
+    
+    console.log(`[Auction] ${username} just bid ${bidAmount}!`);
+    res.json({ success: true, message: 'Bid placed successfully!' });
 });
 
 // -------------------------
@@ -161,10 +332,35 @@ app.post('/api/claimDailyReward', async (req, res) => {
     res.status(504).json({ success: false, message: 'Roblox server timed out' });
 });
 
-app.get('/api/pollActions/:serverId', (req, res) => {
+app.get('/api/pollActions/:serverId', async (req, res) => {
     const { serverId } = req.params;
-    const actions = actionQueues[serverId] || [];
+    let actions = actionQueues[serverId] || [];
     actionQueues[serverId] = []; // Clear queue
+    
+    // Check MongoDB for any pending Offline Auction Wins
+    if (mongoose.connection.readyState === 1) {
+        try {
+            const pendingWins = await PendingAuction.find({});
+            if (pendingWins.length > 0) {
+                console.log(`[Backend] Injecting ${pendingWins.length} pending offline auction wins to Server ${serverId}`);
+                for (const win of pendingWins) {
+                    actions.push({
+                        actionId: 'auc_offline_' + win._id,
+                        action: 'AUCTION_WIN',
+                        userId: win.userId,
+                        itemKey: win.itemKey,
+                        quantity: win.quantity,
+                        cost: win.cost
+                    });
+                    // Delete from DB since we are sending it
+                    await PendingAuction.findByIdAndDelete(win._id);
+                }
+            }
+        } catch (err) {
+            console.error("[Backend] Error fetching pending auctions:", err);
+        }
+    }
+
     res.status(200).json({ actions });
 });
 

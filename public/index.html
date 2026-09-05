@@ -81,11 +81,39 @@
             </div>
         </div>
 
+        <!-- Auction View -->
+        <div id="auctionView" class="view-content hidden">
+            <div class="auction-header">
+                <h2>Global Auction</h2>
+                <div class="auction-timer" id="auctionTimer">00:00</div>
+            </div>
+            
+            <div class="auction-card">
+                <img id="auctionImg" src="" alt="Item" class="auction-img">
+                <h3 id="auctionItemName">Waiting for Auction...</h3>
+                <p id="auctionQty" class="auction-qty">Qty: 0</p>
+                
+                <div class="auction-bid-info">
+                    <div class="bid-box">
+                        <span class="bid-label">Current Bid</span>
+                        <span class="bid-amount" id="auctionCurrentBid">0 🪙</span>
+                    </div>
+                    <div class="bid-box highest-bidder">
+                        <span class="bid-label">Highest Bidder</span>
+                        <span class="bid-name" id="auctionHighestBidder">None</span>
+                    </div>
+                </div>
+                
+                <button id="auctionBidBtn" class="auction-btn" disabled>Bid 0 🪙</button>
+            </div>
+        </div>
+
         <!-- Bottom Navigation -->
         <nav class="bottom-nav">
             <button class="nav-btn active" id="navIndexBtn">Index</button>
             <button class="nav-btn" id="navShopBtn">Shop</button>
-            <button class="nav-btn" id="navDailyBtn">Daily Rewards</button>
+            <button class="nav-btn" id="navAuctionBtn">Auction</button>
+            <button class="nav-btn" id="navDailyBtn">Daily</button>
         </nav>
     </div>
     

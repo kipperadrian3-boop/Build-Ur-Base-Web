@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dailyView = document.getElementById('dailyView');
     const navIndexBtn = document.getElementById('navIndexBtn');
     const navShopBtn = document.getElementById('navShopBtn');
+    const navAuctionBtn = document.getElementById('navAuctionBtn');
     const navDailyBtn = document.getElementById('navDailyBtn');
     const itemsGrid = document.getElementById('itemsGrid');
     const shopList = document.getElementById('shopList');
@@ -26,6 +27,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const dailyTimerBadge = document.getElementById('dailyTimerBadge');
     const dailySubtitle = document.getElementById('dailySubtitle');
     const dailyRewardsList = document.getElementById('dailyRewardsList');
+    
+    // Auction Elements
+    const auctionView = document.getElementById('auctionView');
+    const auctionTimer = document.getElementById('auctionTimer');
+    const auctionImg = document.getElementById('auctionImg');
+    const auctionItemName = document.getElementById('auctionItemName');
+    const auctionQty = document.getElementById('auctionQty');
+    const auctionCurrentBid = document.getElementById('auctionCurrentBid');
+    const auctionHighestBidder = document.getElementById('auctionHighestBidder');
+    const auctionBidBtn = document.getElementById('auctionBidBtn');
     
     // State
     let currentUser = null;
@@ -38,8 +49,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let playerStock = {};
     let playerCash = 0;
     let playerDailyReward = null;
+    let playerDailyReward = null;
     let dailyTimerInterval = null;
     let syncInterval = null;
+    let auctionInterval = null;
+    
+    let lastAuctionState = null;
 
     // Precision Text Fitting (Calculates exact font size so text never overflows and never zooms)
     const measureCanvas = document.createElement('canvas');
@@ -98,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         loadGameConfigs();
         startLiveSync();
+        startAuctionSync();
     } else if (savedCode) {
         // Fallback for older sessions
         codeInput.value = savedCode;
@@ -149,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Fetch Game Configs and start sync
                 loadGameConfigs();
                 startLiveSync();
+                startAuctionSync();
                 
             } else {
                 localStorage.removeItem('roblox_web_code');
@@ -171,6 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('roblox_web_user');
         currentUser = null;
         stopLiveSync();
+        stopAuctionSync();
         mainAppView.classList.add('hidden');
         loginView.classList.remove('hidden');
         codeInput.value = "";
@@ -684,33 +702,167 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- Auction Logic ---
+    
+    function startAuctionSync() {
+        if (auctionInterval) stopAuctionSync();
+        fetchAuctionStatus();
+        auctionInterval = setInterval(fetchAuctionStatus, 1000);
+    }
+    
+    function stopAuctionSync() {
+        if (auctionInterval) {
+            clearInterval(auctionInterval);
+            auctionInterval = null;
+        }
+    }
+    
+    async function fetchAuctionStatus() {
+        try {
+            const res = await fetch('https://build-ur-base-web.onrender.com/api/auction/status');
+            const data = await res.json();
+            
+            if (data.item) {
+                lastAuctionState = data;
+                updateAuctionUI(data);
+            }
+        } catch(err) {
+            auctionTimer.textContent = "Offline";
+        }
+    }
+    
+    function updateAuctionUI(data) {
+        if (!gameConfigs) return;
+        
+        // Timer formatting
+        const remaining = Math.max(0, Math.floor((data.endTime - Date.now()) / 1000));
+        const m = Math.floor(remaining / 60);
+        const s = remaining % 60;
+        auctionTimer.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        
+        // Find item in configs to get Image and DisplayName
+        let itemData = null;
+        if (gameConfigs[data.category] && gameConfigs[data.category][data.item]) {
+            itemData = gameConfigs[data.category][data.item];
+        }
+        
+        if (itemData) {
+            auctionItemName.textContent = itemData.DisplayName || data.item;
+            auctionImg.src = itemData.imageUrl || "";
+        } else {
+            auctionItemName.textContent = data.item;
+        }
+        
+        auctionQty.textContent = `Qty: ${data.qty}`;
+        auctionCurrentBid.textContent = `${data.currentBid || data.startPrice} 🪙`;
+        
+        if (data.highestBidderId) {
+            auctionHighestBidder.textContent = data.highestBidderName;
+            if (data.highestBidderId === currentUser.userId) {
+                auctionHighestBidder.style.color = "#4caf50"; // Highlight green if winning
+            } else {
+                auctionHighestBidder.style.color = "#4a3b32";
+            }
+        } else {
+            auctionHighestBidder.textContent = "None";
+            auctionHighestBidder.style.color = "#4a3b32";
+        }
+        
+        // Bid Button Logic
+        const nextRequiredBid = data.highestBidderId ? (data.currentBid + data.step) : data.startPrice;
+        
+        if (remaining <= 0) {
+            auctionBidBtn.textContent = "Auction Ended";
+            auctionBidBtn.disabled = true;
+        } else if (data.highestBidderId === currentUser.userId) {
+            auctionBidBtn.textContent = "You are highest!";
+            auctionBidBtn.disabled = true;
+        } else if (playerCash < nextRequiredBid) {
+            auctionBidBtn.textContent = `Bid ${nextRequiredBid} 🪙 (Not enough)`;
+            auctionBidBtn.disabled = true;
+        } else {
+            auctionBidBtn.textContent = `Bid ${nextRequiredBid} 🪙`;
+            auctionBidBtn.disabled = false;
+        }
+    }
+    
+    auctionBidBtn.addEventListener('click', async () => {
+        if (!lastAuctionState || !currentUser) return;
+        
+        const bidAmount = lastAuctionState.highestBidderId ? (lastAuctionState.currentBid + lastAuctionState.step) : lastAuctionState.startPrice;
+        
+        auctionBidBtn.disabled = true;
+        auctionBidBtn.textContent = "Bidding...";
+        
+        try {
+            const res = await fetch('https://build-ur-base-web.onrender.com/api/auction/bid', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUser.userId,
+                    username: currentUser.username,
+                    bidAmount: bidAmount
+                })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                showMessage("Bid placed successfully!", true);
+                fetchAuctionStatus(); // immediately refresh
+            } else {
+                showMessage(data.error || "Failed to place bid.", false);
+                auctionBidBtn.disabled = false;
+            }
+        } catch(err) {
+            showMessage("Network error.", false);
+            auctionBidBtn.disabled = false;
+        }
+    });
+
     // --- Navigation Listeners ---
     navIndexBtn.addEventListener('click', () => {
         navIndexBtn.classList.add('active');
         navShopBtn.classList.remove('active');
+        navAuctionBtn.classList.remove('active');
         navDailyBtn.classList.remove('active');
         indexView.classList.remove('hidden');
         shopView.classList.add('hidden');
+        auctionView.classList.add('hidden');
         dailyView.classList.add('hidden');
     });
 
     navShopBtn.addEventListener('click', () => {
         navShopBtn.classList.add('active');
         navIndexBtn.classList.remove('active');
+        navAuctionBtn.classList.remove('active');
         navDailyBtn.classList.remove('active');
         shopView.classList.remove('hidden');
         indexView.classList.add('hidden');
+        auctionView.classList.add('hidden');
         dailyView.classList.add('hidden');
         renderShopCategory(currentShopCategory);
+    });
+
+    navAuctionBtn.addEventListener('click', () => {
+        navAuctionBtn.classList.add('active');
+        navIndexBtn.classList.remove('active');
+        navShopBtn.classList.remove('active');
+        navDailyBtn.classList.remove('active');
+        auctionView.classList.remove('hidden');
+        indexView.classList.add('hidden');
+        shopView.classList.add('hidden');
+        dailyView.classList.add('hidden');
     });
 
     navDailyBtn.addEventListener('click', () => {
         navDailyBtn.classList.add('active');
         navIndexBtn.classList.remove('active');
         navShopBtn.classList.remove('active');
+        navAuctionBtn.classList.remove('active');
         dailyView.classList.remove('hidden');
         indexView.classList.add('hidden');
         shopView.classList.add('hidden');
+        auctionView.classList.add('hidden');
         renderDailyRewards();
     });
 
