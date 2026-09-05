@@ -444,11 +444,6 @@ const auctionConfig = [
     { key: '2Turret', category: 'Defense', start: 2500, up: 250, qty: 10 },//500x10=5k
     { key: '1Turret', category: 'Defense', start: 750, up: 50, qty: 15 },//100x15=1.5k
 
-    // Chests
-    { key: 'Diamond Chest', category: 'Chests', start: 8000, up: 500, qty: 1 },
-    { key: 'Iron Chest', category: 'Chests', start: 2000, up: 150, qty: 2 },
-    { key: 'Wood Chest', category: 'Chests', start: 400, up: 50, qty: 5 },
-
     // Decor & Doors
     { key: 'Metal Laserdoor', category: 'Decor', start: 5000, up: 500, qty: 5 },//2.000x5=10k
     { key: 'Stone Laserdoor', category: 'Decor', start: 1500, up: 250, qty: 10 },//300x10=3k
