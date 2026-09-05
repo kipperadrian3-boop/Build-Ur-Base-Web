@@ -44,6 +44,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const mktRefreshBtn = document.getElementById('mktRefreshBtn');
     const mktListingsCount = document.getElementById('mktListingsCount');
     const mktOffersGrid = document.getElementById('mktOffersGrid');
+    const mktOpenCreateModalBtn = document.getElementById('mktOpenCreateModalBtn');
+    const mktCreateModal = document.getElementById('mktCreateModal');
+    const mktCloseModalBtn = document.getElementById('mktCloseModalBtn');
     const mktMyInventoryList = document.getElementById('mktMyInventoryList');
     const mktBundleList = document.getElementById('mktBundleList');
     const mktClearBundleBtn = document.getElementById('mktClearBundleBtn');
@@ -201,6 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('roblox_web_user');
         currentUser = null;
         currentOfferBundle = {};
+        closeCreateOfferModal();
         stopLiveSync();
         stopAuctionSync();
         mainAppView.classList.add('hidden');
@@ -257,8 +261,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderDailyRewards();
             }
 
-            // Update marketplace if visible
-            if (marketplaceView && !marketplaceView.classList.contains('hidden')) {
+            // Update marketplace inventory if modal is open
+            if (mktCreateModal && !mktCreateModal.classList.contains('hidden')) {
                 renderMarketplaceInventory();
             }
             
@@ -909,10 +913,44 @@ document.addEventListener('DOMContentLoaded', () => {
             dailyView.classList.add('hidden');
 
             fetchMarketplaceOffers();
-            renderMarketplaceInventory();
-            updateMarketplaceCreateButton();
         });
     }
+
+    // Modal Control Functions
+    function openCreateOfferModal() {
+        if (!mktCreateModal) return;
+        mktCreateModal.classList.remove('hidden');
+        renderMarketplaceInventory();
+        renderMarketplaceBundle();
+        updateMarketplaceCreateButton();
+    }
+
+    function closeCreateOfferModal() {
+        if (!mktCreateModal) return;
+        mktCreateModal.classList.add('hidden');
+    }
+
+    if (mktOpenCreateModalBtn) {
+        mktOpenCreateModalBtn.addEventListener('click', openCreateOfferModal);
+    }
+
+    if (mktCloseModalBtn) {
+        mktCloseModalBtn.addEventListener('click', closeCreateOfferModal);
+    }
+
+    if (mktCreateModal) {
+        mktCreateModal.addEventListener('click', (e) => {
+            if (e.target === mktCreateModal) {
+                closeCreateOfferModal();
+            }
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && mktCreateModal && !mktCreateModal.classList.contains('hidden')) {
+            closeCreateOfferModal();
+        }
+    });
 
     // --- P2P Marketplace ("Sell & Buy") Logic ---
 
@@ -1311,8 +1349,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showMessage(`Offer created! Listed for ${data.offer.price.toLocaleString('de-DE')} 🪙 (Your payout: ${data.offer.sellerPayout.toLocaleString('de-DE')} 🪙).`, true);
                     currentOfferBundle = {};
                     mktPayoutInput.value = '';
-                    renderMarketplaceBundle();
-                    updateMarketplaceCreateButton();
+                    closeCreateOfferModal();
                     fetchMarketplaceOffers();
                     fetchLiveStatus();
                 } else {

@@ -129,11 +129,21 @@
                 <!-- Injected via JS -->
             </div>
 
-            <!-- Create Offer Section (Bottom Section) -->
-            <div class="mkt-create-card">
-                <div class="mkt-create-header">
-                    <h3>Create Offer</h3>
-                    <p>Select items from your Roblox inventory to sell to other players</p>
+            <!-- Bottom Sticky Button to Open Create Offer Modal -->
+            <div class="mkt-bottom-action-bar">
+                <button id="mktOpenCreateModalBtn" class="mkt-open-modal-cta">➕ Create Offer</button>
+            </div>
+        </div>
+
+        <!-- Create Offer Modal Window (Spacious & Clean Popup) -->
+        <div id="mktCreateModal" class="mkt-modal-overlay hidden">
+            <div class="mkt-modal-card">
+                <div class="mkt-modal-header">
+                    <div>
+                        <h3>Create Offer</h3>
+                        <p>Select items from your Roblox inventory to sell to other players</p>
+                    </div>
+                    <button id="mktCloseModalBtn" class="mkt-modal-close-btn" title="Close Window">✕</button>
                 </div>
 
                 <div class="mkt-create-columns">
