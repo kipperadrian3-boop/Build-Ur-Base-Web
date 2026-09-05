@@ -122,15 +122,16 @@ app.get('/api/debugServers', (req, res) => {
 // -------------------------
 const auctionConfig = [
     // Blocks
-    { key: 'Metal Block', category: 'Blocks', start: 30000, up: 500, qty: 50 },//--50x1000=50k
-    { key: 'Stone Block', category: 'Blocks', start: 11250, up: 250, qty: 75 },//--75x150=11250
+    { key: 'Metal Block', category: 'Blocks', start: 30000, up: 500, qty: 50 },//50x1.000=50k
+    { key: 'Stone Block', category: 'Blocks', start: 11250, up: 250, qty: 75 },//75x150=11.250
+    { key: 'Block', category: 'Blocks', start: 250, up: 25, qty: 100 },//10x100=1k
 
     // Defense Turrets & Weapons
-    { key: 'Flamethrower', category: 'Defense', start: 10000, up: 500, qty: 1 },
-    { key: '4Turret', category: 'Defense', start: 5000, up: 250, qty: 1 },
-    { key: '3Turret', category: 'Defense', start: 1500, up: 100, qty: 2 },
-    { key: '2Turret', category: 'Defense', start: 500, up: 50, qty: 4 },
-    { key: '1Turret', category: 'Defense', start: 100, up: 20, qty: 5 },
+    { key: 'Flamethrower', category: 'Defense', start: 12500, up: 500, qty: 2 },//10.000x2=20k
+    { key: '4Turret', category: 'Defense', start: 10000, up: 500, qty: 3 },//5.000x3=15k
+    { key: '3Turret', category: 'Defense', start: 4000, up: 300, qty: 5 },//1.500x5=7.5k
+    { key: '2Turret', category: 'Defense', start: 2500, up: 250, qty: 10 },//500x10=5k
+    { key: '1Turret', category: 'Defense', start: 750, up: 50, qty: 15 },//100x15=1.5k
 
     // Chests
     { key: 'Diamond Chest', category: 'Chests', start: 8000, up: 500, qty: 1 },
@@ -138,11 +139,13 @@ const auctionConfig = [
     { key: 'Wood Chest', category: 'Chests', start: 400, up: 50, qty: 5 },
 
     // Decor & Doors
-    { key: 'Metal Laserdoor', category: 'Decor', start: 2000, up: 150, qty: 2 },
-    { key: 'Stone Laserdoor', category: 'Decor', start: 300, up: 30, qty: 4 },
-    { key: 'Laserdoor', category: 'Decor', start: 50, up: 10, qty: 10 },
-    { key: 'Metal Window', category: 'Decor', start: 1000, up: 100, qty: 4 },
-    { key: 'Metal Stair', category: 'Decor', start: 1000, up: 100, qty: 4 }
+    { key: 'Metal Laserdoor', category: 'Decor', start: 5000, up: 500, qty: 5 },//2.000x5=10k
+    { key: 'Stone Laserdoor', category: 'Decor', start: 1500, up: 250, qty: 10 },//300x10=3k
+    { key: 'Metal Window', category: 'Decor', start: 30000, up: 500, qty: 50 },//1.000x50=50k
+    { key: 'Stone Window', category: 'Decor', start: 11250, up: 250, qty: 75 },//150x75=11.250
+    { key: 'Metal Stair', category: 'Decor', start: 30000, up: 500, qty: 50 },//1.000x50=50k
+    { key: 'Stone Stair', category: 'Decor', start: 11250, up: 250, qty: 175 },//150x75=11.250
+    
 ];
 
 let currentAuction = {
