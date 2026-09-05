@@ -1281,16 +1281,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const fee = Math.ceil(payout * 0.05);
 
         if (payout > 0) {
-            const displayPrice = payout + fee;
-            mktCreateBtn.textContent = `Create (${displayPrice.toLocaleString('de-DE')} 🪙)`;
+            mktCreateBtn.textContent = `Create (${fee.toLocaleString('de-DE')} 🪙 Fee)`;
         } else {
-            mktCreateBtn.textContent = 'Create (0 🪙)';
+            mktCreateBtn.textContent = 'Create (0 🪙 Fee)';
         }
 
         if (hasItems && payout > 0) {
             if (playerCash < fee) {
                 mktCreateBtn.disabled = true;
-                mktCreateBtn.textContent = `Create (Need ${fee} 🪙 Fee)`;
+                mktCreateBtn.textContent = `Create (Need ${fee.toLocaleString('de-DE')} 🪙 Fee)`;
             } else {
                 mktCreateBtn.disabled = false;
             }
