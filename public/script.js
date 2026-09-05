@@ -769,7 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Bid Button Logic
-        const nextRequiredBid = data.highestBidderId ? (data.currentBid + data.step) : data.startPrice;
+        const nextRequiredBid = (data.currentBid || data.startPrice) + data.step;
         
         if (remaining <= 0) {
             auctionBidBtn.textContent = "Auction Ended";
@@ -789,7 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
     auctionBidBtn.addEventListener('click', async () => {
         if (!lastAuctionState || !currentUser) return;
         
-        const bidAmount = lastAuctionState.highestBidderId ? (lastAuctionState.currentBid + lastAuctionState.step) : lastAuctionState.startPrice;
+        const bidAmount = (lastAuctionState.currentBid || lastAuctionState.startPrice) + lastAuctionState.step;
         
         auctionBidBtn.disabled = true;
         auctionBidBtn.textContent = "Bidding...";

@@ -189,7 +189,7 @@ function startNewAuction() {
         imageUrl: imageUrl,
         qty: qty,
         startPrice: config.start,
-        currentBid: 0,
+        currentBid: config.start,
         highestBidderId: null,
         highestBidderName: null,
         endTime: getNext10MinuteMark(),
@@ -283,10 +283,11 @@ app.post('/api/auction/bid', (req, res) => {
     const { userId, username, bidAmount } = req.body;
     if (!userId || !bidAmount) return res.status(400).json({ error: 'Missing params' });
 
-    // Validate if bid is high enough
-    const minRequiredBid = currentAuction.highestBidderId ? (currentAuction.currentBid + currentAuction.step) : currentAuction.startPrice;
+    // Validate if bid is high enough (must be at least currentBid + step)
+    const baseBid = currentAuction.currentBid || currentAuction.startPrice;
+    const minRequiredBid = baseBid + currentAuction.step;
     if (bidAmount < minRequiredBid) {
-        return res.status(400).json({ error: 'Bid is too low.' });
+        return res.status(400).json({ error: `Bid is too low. Minimum required: ${minRequiredBid} 🪙.` });
     }
 
     // Check if player has the money across all servers
