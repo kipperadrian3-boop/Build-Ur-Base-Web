@@ -753,7 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
             auctionImg.style.display = "block";
         }
         
-        auctionQty.textContent = `Qty: ${data.qty}`;
+        auctionQty.textContent = `Amount: ${data.qty}`;
         auctionCurrentBid.textContent = `${data.currentBid || data.startPrice} 🪙`;
         
         if (data.highestBidderId) {
