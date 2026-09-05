@@ -470,8 +470,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function buyItem(itemKey, btnElement, quantity = 1) {
-        if (!isServerOnline || !currentServerId) {
-            showMessage("Server is offline. Cannot purchase.", false);
+        if (!isServerOnline) {
+            showMessage("Sync is offline. Cannot purchase.", false);
             return;
         }
 
@@ -487,7 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    serverId: currentServerId,
+                    serverId: currentServerId || 'cloud',
                     userId: currentUser.userId,
                     itemKey: itemKey,
                     quantity: quantity

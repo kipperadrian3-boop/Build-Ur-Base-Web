@@ -319,6 +319,27 @@ async function getPlayerStockData(userId) {
     return stockMap;
 }
 
+// Endpoint: Master Global Item Shop Stock (Called by Roblox Game Servers & Website)
+app.get('/api/shop/globalStock', (req, res) => {
+    const epoch = getStockEpoch();
+    const stockMap = {};
+
+    for (const cat in gameConfigs) {
+        for (const itemKey in gameConfigs[cat]) {
+            const itemConf = gameConfigs[cat][itemKey];
+            stockMap[itemKey] = calculateItemStock(itemKey, epoch, itemConf.StockPercent || 50, itemConf.StockMax || 5);
+        }
+    }
+
+    const nextReset = (epoch + 1) * 300;
+    res.status(200).json({
+        epoch: epoch,
+        stock: stockMap,
+        nextReset: nextReset,
+        serverTime: Math.floor(Date.now() / 1000)
+    });
+});
+
 // Live Server Sync Data
 const activeServers = {}; // Format: { serverId: { lastSeen: Date.now(), players: { "userId": { cash: 100 } } } }
 
