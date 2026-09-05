@@ -588,17 +588,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!playerDailyReward) {
             if (dailyStreakBadge) dailyStreakBadge.textContent = "Streak: Syncing...";
-            if (dailyTimerBadge) {
-                dailyTimerBadge.textContent = isServerOnline ? "Syncing..." : "Server Offline";
-                dailyTimerBadge.className = "daily-timer-badge";
-            }
-            if (dailySubtitle) {
-                dailySubtitle.textContent = isServerOnline 
-                    ? "Syncing streak with game server..." 
-                    : "Connect to game server to sync your daily rewards!";
-            }
+            if (dailyTimerBadge) dailyTimerBadge.textContent = "Syncing...";
             dailyRewardsList.innerHTML = `<div style="text-align:center; padding: 2.5rem 1rem; color: #8c7361; font-weight: 500;">
-                ${isServerOnline ? "Loading daily streak from Roblox game server..." : "Game server is offline. Please start the game to sync!"}
+                Syncing daily streak with Roblox Cloud...
             </div>`;
             return;
         }
@@ -648,7 +640,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (canClaim && isServerOnline) {
                         statusHtml = '<button class="daily-claim-btn" id="claimDailyBtn">Claim</button>';
                     } else if (!isServerOnline) {
-                        statusHtml = '<button class="daily-claim-btn" disabled title="Game server offline">Server Offline</button>';
+                        statusHtml = '<button class="daily-claim-btn" disabled title="Sync offline">Sync Offline</button>';
                     } else {
                         statusHtml = `<span class="daily-badge cooldown daily-cooldown-timer">${formatRemainingTime(remaining)}</span>`;
                     }
@@ -675,7 +667,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (canClaim && isServerOnline) {
                 btnHtml = '<button class="daily-claim-btn" id="claimDailyBtn">Claim Daily Bonus</button>';
             } else if (!isServerOnline) {
-                btnHtml = '<button class="daily-claim-btn" disabled>Game Server Offline</button>';
+                btnHtml = '<button class="daily-claim-btn" disabled>Sync Offline</button>';
             } else {
                 btnHtml = `<button class="daily-claim-btn daily-cooldown-timer" disabled>${formatRemainingTime(remaining)}</button>`;
             }
@@ -697,7 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function claimDailyReward() {
         const claimBtn = document.getElementById('claimDailyBtn');
-        if (!claimBtn || !isServerOnline || !currentServerId || !currentUser) return;
+        if (!claimBtn || !isServerOnline || !currentUser) return;
         
         claimBtn.disabled = true;
         claimBtn.classList.add('loading');
@@ -708,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    serverId: currentServerId,
+                    serverId: currentServerId || 'cloud',
                     userId: currentUser.userId
                 })
             });

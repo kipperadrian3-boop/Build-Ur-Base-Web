@@ -148,14 +148,11 @@ async function getRobloxPlayerData(userId) {
     };
 }
 
-async function saveRobloxPlayerData(userId, rawData) {
-    if (!userId || !rawData) return false;
+async function saveOpenCloudStore(datastoreName, entryKey, data) {
     try {
-        const entryKey = `Player_${userId}`;
-        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=BuildUrBase_PlayerData_v9&entryKey=${encodeURIComponent(entryKey)}`;
-        const bodyStr = JSON.stringify(rawData);
+        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=${encodeURIComponent(datastoreName)}&entryKey=${encodeURIComponent(entryKey)}`;
+        const bodyStr = JSON.stringify(data);
         const md5 = crypto.createHash('md5').update(bodyStr).digest('base64');
-        
         const res = await fetch(url, {
             method: 'POST',
             headers: {
@@ -165,22 +162,161 @@ async function saveRobloxPlayerData(userId, rawData) {
             },
             body: bodyStr
         });
-
-        if (res.ok) {
-            offlinePlayerCache[userId] = {
-                data: rawData,
-                timestamp: Date.now()
-            };
-            console.log(`[OpenCloud] Successfully saved DataStore for Player_${userId}`);
-            return true;
-        } else {
-            console.error(`[OpenCloud] Save failed for ${userId}: status ${res.status}`, await res.text());
-            return false;
-        }
+        return res.ok;
     } catch (e) {
-        console.error(`[OpenCloud] Error saving DataStore for ${userId}:`, e);
+        console.error(`[OpenCloud] Error saving to ${datastoreName}:`, e);
         return false;
     }
+}
+
+async function saveRobloxPlayerData(userId, rawData) {
+    if (!userId || !rawData) return false;
+    const ok = await saveOpenCloudStore("BuildUrBase_PlayerData_v9", `Player_${userId}`, rawData);
+    if (ok) {
+        offlinePlayerCache[userId] = {
+            data: rawData,
+            timestamp: Date.now()
+        };
+        console.log(`[OpenCloud] Successfully saved DataStore for Player_${userId}`);
+    }
+    return ok;
+}
+
+// Daily Rewards Open Cloud Fetch & Cache
+const offlineDailyCache = {}; // { [userId]: { data, timestamp } }
+
+async function getDailyRewardData(userId) {
+    if (!userId) return null;
+
+    // 1. Live server check
+    for (const server of Object.values(activeServers)) {
+        if (server.players && server.players[userId] && server.players[userId].dailyReward) {
+            return server.players[userId].dailyReward;
+        }
+    }
+
+    // 2. Memory cache check (10s TTL)
+    const cached = offlineDailyCache[userId];
+    if (cached && (Date.now() - cached.timestamp < 10000)) {
+        const data = cached.data;
+        const now = Math.floor(Date.now() / 1000);
+        const lastClaim = Number(data.LastClaimTime) || 0;
+        const canClaim = (lastClaim === 0) || (now - lastClaim >= 86400);
+        const remaining = canClaim ? 0 : Math.max(0, 86400 - (now - lastClaim));
+        return {
+            streak: Number(data.Streak) || 1,
+            lastClaimTime: lastClaim,
+            canClaim: canClaim,
+            remainingSeconds: remaining,
+            hasThreeSpeed: data.HasThreeSpeed === true
+        };
+    }
+
+    // 3. Open Cloud fetch from DailyRewardsStore_v2
+    try {
+        const entryKey = `Player_${userId}`;
+        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=DailyRewardsStore_v2&entryKey=${encodeURIComponent(entryKey)}`;
+        const res = await fetch(url, { headers: { 'x-api-key': ROBLOX_OPENCLOUD_API_KEY } });
+        if (res.ok) {
+            const data = await res.json();
+            offlineDailyCache[userId] = {
+                data: data,
+                timestamp: Date.now()
+            };
+            const now = Math.floor(Date.now() / 1000);
+            const lastClaim = Number(data.LastClaimTime) || 0;
+            const canClaim = (lastClaim === 0) || (now - lastClaim >= 86400);
+            const remaining = canClaim ? 0 : Math.max(0, 86400 - (now - lastClaim));
+            return {
+                streak: Number(data.Streak) || 1,
+                lastClaimTime: lastClaim,
+                canClaim: canClaim,
+                remainingSeconds: remaining,
+                hasThreeSpeed: data.HasThreeSpeed === true
+            };
+        }
+    } catch (e) {
+        console.error('[OpenCloud] Error fetching DailyRewardsStore_v2:', e);
+    }
+
+    return {
+        streak: 1,
+        lastClaimTime: 0,
+        canClaim: true,
+        remainingSeconds: 0,
+        hasThreeSpeed: false
+    };
+}
+
+// 5-Minute Deterministic Item Shop Stock Calculation
+function getStockEpoch() {
+    return Math.floor(Date.now() / 1000 / 300);
+}
+
+function hashString(str) {
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+        hash = (((hash * 33) + str.charCodeAt(i)) % 2147483647);
+    }
+    return hash;
+}
+
+function calculateItemStock(itemKey, epoch, stockPercent = 50, stockMax = 5) {
+    let seed = (epoch * 1000003 + hashString(itemKey)) >>> 0;
+    function nextInt(min, max) {
+        seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff;
+        return min + (seed % (max - min + 1));
+    }
+
+    let stock = 0;
+    for (let i = 0; i < stockMax; i++) {
+        if (nextInt(1, 100) <= stockPercent) {
+            stock++;
+        }
+    }
+    return stock;
+}
+
+async function getOfflinePlayerPurchases(userId) {
+    const epoch = getStockEpoch();
+    try {
+        const entryKey = `ISP_${userId}`;
+        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=ItemShopPurchases_v5&entryKey=${encodeURIComponent(entryKey)}`;
+        const res = await fetch(url, { headers: { 'x-api-key': ROBLOX_OPENCLOUD_API_KEY } });
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.e === epoch) {
+                return data.p || {};
+            }
+        }
+    } catch (e) {
+        console.error('[OpenCloud] Error fetching player purchases:', e);
+    }
+    return {};
+}
+
+async function getPlayerStockData(userId) {
+    // 1. Live server check
+    for (const server of Object.values(activeServers)) {
+        if (server.players && server.players[userId] && server.players[userId].stock) {
+            return server.players[userId].stock;
+        }
+    }
+
+    // 2. Offline deterministic stock calculation
+    const epoch = getStockEpoch();
+    const purchases = await getOfflinePlayerPurchases(userId);
+    const stockMap = {};
+
+    for (const cat in gameConfigs) {
+        for (const itemKey in gameConfigs[cat]) {
+            const itemConf = gameConfigs[cat][itemKey];
+            const totalStock = calculateItemStock(itemKey, epoch, itemConf.StockPercent || 50, itemConf.StockMax || 5);
+            const bought = purchases[itemKey] || 0;
+            stockMap[itemKey] = Math.max(0, totalStock - bought);
+        }
+    }
+    return stockMap;
 }
 
 // Live Server Sync Data
@@ -250,17 +386,19 @@ app.get('/api/status/:userId', async (req, res) => {
 
     // Retrieve player data (Live Server if player is in-game, or Open Cloud if offline)
     const playerData = await getRobloxPlayerData(userId);
+    const dailyData = await getDailyRewardData(userId);
+    const stockData = await getPlayerStockData(userId);
     
     res.status(200).json({
         isServerOnline: isGameServerRunning || true, // Website stays functional 24/7 via Open Cloud
         isGameServerRunning: isGameServerRunning,
         isPlayerInGame: playerData.isOnline,
         isOpenCloudActive: true,
-        currentServerId,
+        currentServerId: currentServerId || 'cloud',
         playerCash: playerData.cash,
-        playerStock: playerData.stock,
+        playerStock: stockData,
         playerInventory: playerData.inventory,
-        dailyReward: playerData.dailyReward,
+        dailyReward: dailyData,
         serverTime: Math.floor(now / 1000)
     });
 });
@@ -729,58 +867,177 @@ const actionResults = {}; // { actionId: { success, message, newStock, ... } }
 
 app.post('/api/buyItem', async (req, res) => {
     const { serverId, userId, itemKey, quantity } = req.body;
-    if (!serverId || !userId || !itemKey) return res.status(400).json({ error: 'Missing params' });
-    if (!activeServers[serverId]) return res.status(400).json({ error: 'Server offline' });
+    if (!userId || !itemKey) return res.status(400).json({ error: 'Missing params' });
+    const qty = quantity || 1;
 
-    const actionId = 'act_' + Math.random().toString(36).substr(2, 9);
-    
-    if (!actionQueues[serverId]) actionQueues[serverId] = [];
-    actionQueues[serverId].push({ actionId, action: 'BUY', userId, itemKey, quantity: quantity || 1 });
+    // 1. If live game server is online and registered, route through live server
+    if (serverId && activeServers[serverId]) {
+        const actionId = 'act_' + Math.random().toString(36).substr(2, 9);
+        if (!actionQueues[serverId]) actionQueues[serverId] = [];
+        actionQueues[serverId].push({ actionId, action: 'BUY', userId, itemKey, quantity: qty });
 
-    // Wait for result (timeout after 15 seconds)
-    let attempts = 0;
-    while (attempts < 30) {
-        if (actionResults[actionId]) {
-            const result = actionResults[actionId];
-            delete actionResults[actionId];
-            if (result.success) return res.status(200).json(result);
-            else return res.status(400).json(result);
+        let attempts = 0;
+        while (attempts < 30) {
+            if (actionResults[actionId]) {
+                const result = actionResults[actionId];
+                delete actionResults[actionId];
+                if (result.success) return res.status(200).json(result);
+                else return res.status(400).json(result);
+            }
+            await new Promise(r => setTimeout(r, 500));
+            attempts++;
         }
-        await new Promise(r => setTimeout(r, 500));
-        attempts++;
+        actionQueues[serverId] = actionQueues[serverId].filter(a => a.actionId !== actionId);
+        return res.status(504).json({ success: false, message: 'Roblox server timed out' });
     }
-    
-    // Timeout
-    actionQueues[serverId] = actionQueues[serverId].filter(a => a.actionId !== actionId);
-    res.status(504).json({ success: false, message: 'Roblox server timed out' });
+
+    // 2. OFFLINE: Process item shop purchase directly via Open Cloud
+    let itemConfig = null;
+    for (const cat in gameConfigs) {
+        if (gameConfigs[cat][itemKey]) {
+            itemConfig = gameConfigs[cat][itemKey];
+            break;
+        }
+    }
+    if (!itemConfig) return res.status(400).json({ error: 'Item not found in catalog' });
+
+    const price = itemConfig.Price || 0;
+    const totalCost = price * qty;
+
+    const buyerData = await getRobloxPlayerData(userId);
+    if (buyerData.cash < totalCost) {
+        return res.status(400).json({ success: false, message: 'Not enough coins!' });
+    }
+
+    const stockMap = await getPlayerStockData(userId);
+    const availableStock = stockMap[itemKey] !== undefined ? stockMap[itemKey] : 0;
+    if (availableStock < qty) {
+        return res.status(400).json({ success: false, message: 'Out of stock!' });
+    }
+
+    // Deduct coins & add items to player's DataStore
+    if (buyerData.raw) {
+        buyerData.raw.Coins = Math.max(0, (buyerData.raw.Coins || 0) - totalCost);
+        buyerData.raw.Inventory = buyerData.raw.Inventory || {};
+        buyerData.raw.Inventory[itemKey] = (buyerData.raw.Inventory[itemKey] || 0) + qty;
+        await saveRobloxPlayerData(userId, buyerData.raw);
+    }
+
+    // Record purchase in ItemShopPurchases_v5
+    const epoch = getStockEpoch();
+    const purchases = await getOfflinePlayerPurchases(userId);
+    purchases[itemKey] = (purchases[itemKey] || 0) + qty;
+    await saveOpenCloudStore('ItemShopPurchases_v5', `ISP_${userId}`, { e: epoch, p: purchases });
+
+    const newStock = Math.max(0, availableStock - qty);
+    console.log(`[ItemShop] Offline purchase: ${userId} bought ${qty}x ${itemKey} for ${totalCost} Coins. New stock: ${newStock}`);
+    return res.status(200).json({
+        success: true,
+        message: `Successfully bought ${qty}x ${itemConfig.DisplayName || itemKey}!`,
+        newStock: newStock
+    });
 });
 
 app.post('/api/claimDailyReward', async (req, res) => {
     const { serverId, userId } = req.body;
-    if (!serverId || !userId) return res.status(400).json({ error: 'Missing params' });
-    if (!activeServers[serverId]) return res.status(400).json({ error: 'Server offline' });
+    if (!userId) return res.status(400).json({ error: 'Missing params' });
 
-    const actionId = 'claim_' + Math.random().toString(36).substr(2, 9);
-    
-    if (!actionQueues[serverId]) actionQueues[serverId] = [];
-    actionQueues[serverId].push({ actionId, action: 'CLAIM_DAILY', userId });
+    // 1. If live server is active, route through it
+    if (serverId && activeServers[serverId]) {
+        const actionId = 'claim_' + Math.random().toString(36).substr(2, 9);
+        if (!actionQueues[serverId]) actionQueues[serverId] = [];
+        actionQueues[serverId].push({ actionId, action: 'CLAIM_DAILY', userId });
 
-    // Wait for result (timeout after 15 seconds)
-    let attempts = 0;
-    while (attempts < 30) {
-        if (actionResults[actionId]) {
-            const result = actionResults[actionId];
-            delete actionResults[actionId];
-            if (result.success) return res.status(200).json(result);
-            else return res.status(400).json(result);
+        let attempts = 0;
+        while (attempts < 30) {
+            if (actionResults[actionId]) {
+                const result = actionResults[actionId];
+                delete actionResults[actionId];
+                if (result.success) return res.status(200).json(result);
+                else return res.status(400).json(result);
+            }
+            await new Promise(r => setTimeout(r, 500));
+            attempts++;
         }
-        await new Promise(r => setTimeout(r, 500));
-        attempts++;
+        actionQueues[serverId] = actionQueues[serverId].filter(a => a.actionId !== actionId);
+        return res.status(504).json({ success: false, message: 'Roblox server timed out' });
     }
-    
-    // Timeout
-    actionQueues[serverId] = actionQueues[serverId].filter(a => a.actionId !== actionId);
-    res.status(504).json({ success: false, message: 'Roblox server timed out' });
+
+    // 2. OFFLINE: Claim daily reward directly via Open Cloud
+    const entryKey = `Player_${userId}`;
+    let data = { Streak: 1, LastClaimTime: 0, HasThreeSpeed: false };
+    try {
+        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=DailyRewardsStore_v2&entryKey=${encodeURIComponent(entryKey)}`;
+        const resDs = await fetch(url, { headers: { 'x-api-key': ROBLOX_OPENCLOUD_API_KEY } });
+        if (resDs.ok) {
+            data = await resDs.json();
+        }
+    } catch (e) {
+        console.error('[OpenCloud] Error fetching DailyRewardsStore_v2:', e);
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const lastClaim = Number(data.LastClaimTime) || 0;
+    const canClaim = (lastClaim === 0) || (now - lastClaim >= 86400);
+
+    if (!canClaim) {
+        const remaining = 86400 - (now - lastClaim);
+        const hours = Math.floor(remaining / 3600);
+        const mins = Math.floor((remaining % 3600) / 60);
+        return res.status(400).json({ success: false, message: `Please wait ${hours}h ${mins}m before claiming.` });
+    }
+
+    const currentStreak = Number(data.Streak) || 1;
+    let rewardDesc = "";
+    let coinsAwarded = 0;
+
+    if (currentStreak === 1) {
+        coinsAwarded = 1000;
+        rewardDesc = "1,000 Coins";
+    } else if (currentStreak === 2) {
+        rewardDesc = "Medium Coins Potion";
+    } else if (currentStreak === 3) {
+        rewardDesc = "Medium Shards Potion";
+    } else if (currentStreak === 4) {
+        data.HasThreeSpeed = true;
+        rewardDesc = "Unlock x3 GameSpeed";
+    } else if (currentStreak === 5) {
+        rewardDesc = "Medium Damage Potion";
+    } else if (currentStreak === 6) {
+        coinsAwarded = 25000;
+        rewardDesc = "25,000 Coins";
+    } else if (currentStreak === 7) {
+        rewardDesc = "Medium Coins, Shards & Damage Potions";
+    } else {
+        coinsAwarded = Math.floor(Math.random() * 4001) + 1000;
+        rewardDesc = `${coinsAwarded.toLocaleString('de-DE')} Coins`;
+    }
+
+    data.LastClaimTime = now;
+    data.Streak = currentStreak < 7 ? currentStreak + 1 : 8;
+
+    // Save DailyRewardsStore_v2
+    await saveOpenCloudStore("DailyRewardsStore_v2", entryKey, data);
+    delete offlineDailyCache[userId];
+
+    // Award coins if applicable
+    if (coinsAwarded > 0) {
+        const pData = await getRobloxPlayerData(userId);
+        if (pData.raw) {
+            pData.raw.Coins = (pData.raw.Coins || 0) + coinsAwarded;
+            await saveRobloxPlayerData(userId, pData.raw);
+        }
+    }
+
+    console.log(`[DailyRewards] Offline claim for ${userId}: Streak ${currentStreak} -> ${data.Streak}, Reward: ${rewardDesc}`);
+    return res.status(200).json({
+        success: true,
+        message: "Claimed " + rewardDesc,
+        reward: rewardDesc,
+        newStreak: data.Streak,
+        lastClaimTime: now,
+        coinsAwarded: coinsAwarded
+    });
 });
 
 app.get('/api/pollActions/:serverId', async (req, res) => {
