@@ -49,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let playerStock = {};
     let playerCash = 0;
     let playerDailyReward = null;
-    let playerDailyReward = null;
     let dailyTimerInterval = null;
     let syncInterval = null;
     let auctionInterval = null;
@@ -758,7 +757,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (data.highestBidderId) {
             auctionHighestBidder.textContent = data.highestBidderName;
-            if (data.highestBidderId === currentUser.userId) {
+            if (currentUser && data.highestBidderId === currentUser.userId) {
                 auctionHighestBidder.style.color = "#4caf50"; // Highlight green if winning
             } else {
                 auctionHighestBidder.style.color = "#4a3b32";
@@ -774,7 +773,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (remaining <= 0) {
             auctionBidBtn.textContent = "Auction Ended";
             auctionBidBtn.disabled = true;
-        } else if (data.highestBidderId === currentUser.userId) {
+        } else if (currentUser && data.highestBidderId === currentUser.userId) {
             auctionBidBtn.textContent = "You are highest!";
             auctionBidBtn.disabled = true;
         } else if (playerCash < nextRequiredBid) {
