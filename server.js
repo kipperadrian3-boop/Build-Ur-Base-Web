@@ -121,17 +121,36 @@ app.get('/api/debugServers', (req, res) => {
 // GLOBAL AUCTION SYSTEM
 // -------------------------
 const auctionConfig = [
-    { key: 'Metal Block', category: 'Blocks', start: 1000, up: 100, minQty: 1, maxQty: 5 },
-    { key: 'Wood Block', category: 'Blocks', start: 500, up: 50, minQty: 5, maxQty: 10 },
-    { key: 'Spike', category: 'Defense', start: 2000, up: 200, minQty: 1, maxQty: 3 },
-    { key: 'Small Chest', category: 'Chests', start: 3000, up: 500, minQty: 1, maxQty: 1 },
-    { key: 'Plant', category: 'Decor', start: 150, up: 20, minQty: 1, maxQty: 5 },
-    { key: 'Turret', category: 'Defense', start: 5000, up: 500, minQty: 1, maxQty: 2 }
+    // Blocks
+    { key: 'Metal Block', category: 'Blocks', start: 1000, up: 100, minQty: 2, maxQty: 10 },
+    { key: 'Stone Block', category: 'Blocks', start: 200, up: 25, minQty: 5, maxQty: 20 },
+    { key: 'Block', category: 'Blocks', start: 50, up: 10, minQty: 10, maxQty: 50 },
+
+    // Defense Turrets & Weapons
+    { key: 'Flamethrower', category: 'Defense', start: 10000, up: 500, minQty: 1, maxQty: 2 },
+    { key: '4Turret', category: 'Defense', start: 5000, up: 250, minQty: 1, maxQty: 3 },
+    { key: '3Turret', category: 'Defense', start: 1500, up: 100, minQty: 1, maxQty: 4 },
+    { key: '2Turret', category: 'Defense', start: 500, up: 50, minQty: 2, maxQty: 5 },
+    { key: '1Turret', category: 'Defense', start: 100, up: 20, minQty: 2, maxQty: 6 },
+
+    // Chests
+    { key: 'Diamond Chest', category: 'Chests', start: 8000, up: 500, minQty: 1, maxQty: 2 },
+    { key: 'Iron Chest', category: 'Chests', start: 2000, up: 150, minQty: 1, maxQty: 3 },
+    { key: 'Wood Chest', category: 'Chests', start: 400, up: 50, minQty: 2, maxQty: 5 },
+
+    // Decor & Doors
+    { key: 'Metal Laserdoor', category: 'Decor', start: 2000, up: 150, minQty: 1, maxQty: 3 },
+    { key: 'Stone Laserdoor', category: 'Decor', start: 300, up: 30, minQty: 2, maxQty: 5 },
+    { key: 'Laserdoor', category: 'Decor', start: 50, up: 10, minQty: 3, maxQty: 10 },
+    { key: 'Metal Window', category: 'Decor', start: 1000, up: 100, minQty: 2, maxQty: 5 },
+    { key: 'Metal Stair', category: 'Decor', start: 1000, up: 100, minQty: 2, maxQty: 5 }
 ];
 
 let currentAuction = {
     item: null,
     category: null,
+    displayName: null,
+    imageUrl: null,
     qty: 0,
     startPrice: 0,
     currentBid: 0,
@@ -153,9 +172,19 @@ function startNewAuction() {
     const config = auctionConfig[Math.floor(Math.random() * auctionConfig.length)];
     const qty = Math.floor(Math.random() * (config.maxQty - config.minQty + 1)) + config.minQty;
     
+    let displayName = config.key;
+    let imageUrl = "";
+    if (gameConfigs[config.category] && gameConfigs[config.category][config.key]) {
+        const itemInfo = gameConfigs[config.category][config.key];
+        displayName = itemInfo.DisplayName || config.key;
+        imageUrl = itemInfo.imageUrl || "";
+    }
+
     currentAuction = {
         item: config.key,
         category: config.category,
+        displayName: displayName,
+        imageUrl: imageUrl,
         qty: qty,
         startPrice: config.start,
         currentBid: 0,
@@ -164,7 +193,7 @@ function startNewAuction() {
         endTime: getNext10MinuteMark(),
         step: config.up
     };
-    console.log(`[Auction] Started new auction: ${qty}x ${config.key}, Ends at: ${new Date(currentAuction.endTime).toLocaleTimeString()}`);
+    console.log(`[Auction] Started new auction: ${qty}x ${displayName} (${config.key}), Ends at: ${new Date(currentAuction.endTime).toLocaleTimeString()}`);
 }
 startNewAuction();
 
@@ -233,8 +262,17 @@ setInterval(() => {
 }, 1000);
 
 app.get('/api/auction/status', (req, res) => {
+    let img = currentAuction.imageUrl || "";
+    let name = currentAuction.displayName || currentAuction.item;
+    if (gameConfigs[currentAuction.category] && gameConfigs[currentAuction.category][currentAuction.item]) {
+        const itemInfo = gameConfigs[currentAuction.category][currentAuction.item];
+        if (itemInfo.imageUrl) img = itemInfo.imageUrl;
+        if (itemInfo.DisplayName) name = itemInfo.DisplayName;
+    }
     res.json({
         ...currentAuction,
+        displayName: name,
+        imageUrl: img,
         serverTime: Date.now()
     });
 });

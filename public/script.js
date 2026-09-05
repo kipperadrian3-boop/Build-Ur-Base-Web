@@ -731,25 +731,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function updateAuctionUI(data) {
-        if (!gameConfigs) return;
-        
         // Timer formatting
         const remaining = Math.max(0, Math.floor((data.endTime - Date.now()) / 1000));
         const m = Math.floor(remaining / 60);
         const s = remaining % 60;
         auctionTimer.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
         
-        // Find item in configs to get Image and DisplayName
-        let itemData = null;
-        if (gameConfigs[data.category] && gameConfigs[data.category][data.item]) {
-            itemData = gameConfigs[data.category][data.item];
+        // Find item display name and image
+        let displayName = data.displayName || data.item;
+        let imgUrl = data.imageUrl || "";
+
+        if (gameConfigs && gameConfigs[data.category] && gameConfigs[data.category][data.item]) {
+            const itemData = gameConfigs[data.category][data.item];
+            if (itemData.DisplayName) displayName = itemData.DisplayName;
+            if (itemData.imageUrl) imgUrl = itemData.imageUrl;
         }
         
-        if (itemData) {
-            auctionItemName.textContent = itemData.DisplayName || data.item;
-            auctionImg.src = itemData.imageUrl || "";
-        } else {
-            auctionItemName.textContent = data.item;
+        auctionItemName.textContent = displayName;
+        if (imgUrl) {
+            auctionImg.src = imgUrl;
+            auctionImg.style.display = "block";
         }
         
         auctionQty.textContent = `Qty: ${data.qty}`;
