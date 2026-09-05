@@ -122,28 +122,28 @@ app.get('/api/debugServers', (req, res) => {
 // -------------------------
 const auctionConfig = [
     // Blocks
-    { key: 'Metal Block', category: 'Blocks', start: 1000, up: 100, minQty: 2, maxQty: 10 },
-    { key: 'Stone Block', category: 'Blocks', start: 200, up: 25, minQty: 5, maxQty: 20 },
-    { key: 'Block', category: 'Blocks', start: 50, up: 10, minQty: 10, maxQty: 50 },
+    { key: 'Metal Block', category: 'Blocks', start: 1000, up: 100, qty: 5 },
+    { key: 'Stone Block', category: 'Blocks', start: 200, up: 25, qty: 20 },
+    { key: 'Block', category: 'Blocks', start: 50, up: 10, qty: 50 },
 
     // Defense Turrets & Weapons
-    { key: 'Flamethrower', category: 'Defense', start: 10000, up: 500, minQty: 1, maxQty: 2 },
-    { key: '4Turret', category: 'Defense', start: 5000, up: 250, minQty: 1, maxQty: 3 },
-    { key: '3Turret', category: 'Defense', start: 1500, up: 100, minQty: 1, maxQty: 4 },
-    { key: '2Turret', category: 'Defense', start: 500, up: 50, minQty: 2, maxQty: 5 },
-    { key: '1Turret', category: 'Defense', start: 100, up: 20, minQty: 2, maxQty: 6 },
+    { key: 'Flamethrower', category: 'Defense', start: 10000, up: 500, qty: 1 },
+    { key: '4Turret', category: 'Defense', start: 5000, up: 250, qty: 1 },
+    { key: '3Turret', category: 'Defense', start: 1500, up: 100, qty: 2 },
+    { key: '2Turret', category: 'Defense', start: 500, up: 50, qty: 4 },
+    { key: '1Turret', category: 'Defense', start: 100, up: 20, qty: 5 },
 
     // Chests
-    { key: 'Diamond Chest', category: 'Chests', start: 8000, up: 500, minQty: 1, maxQty: 2 },
-    { key: 'Iron Chest', category: 'Chests', start: 2000, up: 150, minQty: 1, maxQty: 3 },
-    { key: 'Wood Chest', category: 'Chests', start: 400, up: 50, minQty: 2, maxQty: 5 },
+    { key: 'Diamond Chest', category: 'Chests', start: 8000, up: 500, qty: 1 },
+    { key: 'Iron Chest', category: 'Chests', start: 2000, up: 150, qty: 2 },
+    { key: 'Wood Chest', category: 'Chests', start: 400, up: 50, qty: 5 },
 
     // Decor & Doors
-    { key: 'Metal Laserdoor', category: 'Decor', start: 2000, up: 150, minQty: 1, maxQty: 3 },
-    { key: 'Stone Laserdoor', category: 'Decor', start: 300, up: 30, minQty: 2, maxQty: 5 },
-    { key: 'Laserdoor', category: 'Decor', start: 50, up: 10, minQty: 3, maxQty: 10 },
-    { key: 'Metal Window', category: 'Decor', start: 1000, up: 100, minQty: 2, maxQty: 5 },
-    { key: 'Metal Stair', category: 'Decor', start: 1000, up: 100, minQty: 2, maxQty: 5 }
+    { key: 'Metal Laserdoor', category: 'Decor', start: 2000, up: 150, qty: 2 },
+    { key: 'Stone Laserdoor', category: 'Decor', start: 300, up: 30, qty: 4 },
+    { key: 'Laserdoor', category: 'Decor', start: 50, up: 10, qty: 10 },
+    { key: 'Metal Window', category: 'Decor', start: 1000, up: 100, qty: 4 },
+    { key: 'Metal Stair', category: 'Decor', start: 1000, up: 100, qty: 4 }
 ];
 
 let currentAuction = {
@@ -170,7 +170,7 @@ function getNext10MinuteMark() {
 
 function startNewAuction() {
     const config = auctionConfig[Math.floor(Math.random() * auctionConfig.length)];
-    const qty = Math.floor(Math.random() * (config.maxQty - config.minQty + 1)) + config.minQty;
+    const qty = config.qty || 1;
     
     let displayName = config.key;
     let imageUrl = "";
