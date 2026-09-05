@@ -960,7 +960,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     return {
                         category: cat,
                         displayName: cfg.DisplayName || itemKey,
-                        imageUrl: cfg.imageUrl || ''
+                        imageUrl: cfg.imageUrl || '',
+                        price: cfg.Price || 0
                     };
                 }
             }
@@ -968,7 +969,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
             category: 'Items',
             displayName: itemKey,
-            imageUrl: ''
+            imageUrl: '',
+            price: 0
         };
     }
 
@@ -1200,6 +1202,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 category: details.category,
                 displayName: details.displayName,
                 imageUrl: details.imageUrl,
+                price: details.price || 0,
                 quantity: 1
             };
         } else {
@@ -1286,8 +1289,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function calculateBundleShopValue() {
+        let total = 0;
+        for (const key in currentOfferBundle) {
+            const item = currentOfferBundle[key];
+            const details = getItemDetails(key);
+            const unitPrice = (details && typeof details.price === 'number') ? details.price : (item.price || 0);
+            total += unitPrice * (item.quantity || 1);
+        }
+        return total;
+    }
+
+    function updateMarketplacePricePlaceholder() {
+        if (!mktPayoutInput) return;
+        const total = calculateBundleShopValue();
+        if (total > 0) {
+            mktPayoutInput.placeholder = `Recommended: ${total}`;
+        } else {
+            mktPayoutInput.placeholder = 'Recommended: 0';
+        }
+    }
+
     function updateMarketplaceCreateButton() {
         if (!mktPayoutInput || !mktCreateBtn) return;
+
+        updateMarketplacePricePlaceholder();
 
         const payout = Math.max(0, parseInt(mktPayoutInput.value, 10) || 0);
         const hasItems = Object.keys(currentOfferBundle).length > 0;

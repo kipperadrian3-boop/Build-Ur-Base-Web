@@ -1540,6 +1540,13 @@ button:hover {
     color: #4a3b32;
     outline: none;
     transition: border-color 0.2s;
+    text-align: left;
+}
+
+.mkt-input-wrapper input::placeholder {
+    color: #a08c7c;
+    font-weight: 500;
+    font-size: 0.95rem;
 }
 
 .mkt-input-wrapper input:focus {
