@@ -246,7 +246,13 @@ document.addEventListener('DOMContentLoaded', () => {
             playerDailyReward = data.dailyReward || null;
             playerInventory = data.playerInventory || {};
             
-            if (isServerOnline) {
+            if (data.isGameServerRunning) {
+                serverStatusDiv.textContent = 'Server: Online';
+                serverStatusDiv.className = 'status-indicator online';
+            } else if (data.isOpenCloudActive) {
+                serverStatusDiv.textContent = 'Cloud Sync: Active';
+                serverStatusDiv.className = 'status-indicator online';
+            } else if (isServerOnline) {
                 serverStatusDiv.textContent = 'Server: Online';
                 serverStatusDiv.className = 'status-indicator online';
             } else {

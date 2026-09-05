@@ -58,6 +58,131 @@ const codesDB = {};
 const fs = require('fs');
 let gameConfigs = {};
 
+// Open Cloud Configuration & Offline Player Cache
+const crypto = require('crypto');
+const ROBLOX_OPENCLOUD_API_KEY = process.env.ROBLOX_OPENCLOUD_API_KEY || "9I06qJ0uGUWTIbGfl3TCupVrdm0pBy+7aVIEPkpYy9HHILbGZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNkluTnBaeTB5TURJeExUQTNMVEV6VkRFNE9qVXhPalE1V2lJc0luUjVjQ0k2SWtwWFZDSjkuZXlKaGRXUWlPaUpTYjJKc2IzaEpiblJsY201aGJDSXNJbWx6Y3lJNklrTnNiM1ZrUVhWMGFHVnVkR2xqWVhScGIyNVRaWEoyYVdObElpd2lZbUZ6WlVGd2FVdGxlU0k2SWpsSk1EWnhTakIxUjFWWFZFbGlSMlpzTTFSRGRYQldjbVJ0TUhCQ2VTczNZVlpKUlZCcmNGbDVPVWhJU1V4aVJ5SXNJbTkzYm1WeVNXUWlPaUl4TURVek1ETTRNRFV4T0NJc0ltVjRjQ0k2TVRjNE9EWTBNek0wTlN3aWFXRjBJam94TnpnNE5qTTVOelExTENKdVltWWlPakUzT0RnMk16azNORFY5LmwzTDFiTENtbTBGOGMxdWFQcjVBQzNFSWNacHZrZzlKOVh2OC1abmR2bXBFQVRzbW9EcDZtdDk1UndUb3hNbm42YlRCYVdYNjF3M2dqV3pKN1kzdllQVF9fNUZxS2hqUXgyM3FHcnhpaHItTC05WkRTZExscUctTm1QTWV2S3E4M3d5RmFkNmF6eWJBb1V2V2tzYTJLNHRYZzNjQm1jNWNYS3ptYnlHTlg3VWhwdVItOG03VUZQbG9DSV92ZTNEODFFcHh4Q3c3UHowOHBGNEthcXFsWHpaQ0hhTzBmWGp5OEN1VWxsMjliYVpIajAyN3kxNjZvSG1HcEdFaVdoRnlfWFRxNUJyamdNSVJqWmZtODJmSmsxLUNOS2VfVDBuSlFQX241YVpVTXllNExPRE1ndUpZLTRNa0JKdVBULVZQVlpfWG43b3hqRGJ4SC1OR2dBakNCUQ==";
+const ROBLOX_UNIVERSE_ID = process.env.ROBLOX_UNIVERSE_ID || "10216403339";
+
+// Cache for offline players to avoid Roblox DataStore rate limits (15-second TTL)
+const offlinePlayerCache = {}; // { [userId]: { data: object, timestamp: number } }
+
+async function getRobloxPlayerData(userId) {
+    if (!userId) return { isOnline: false, cash: 0, stock: {}, inventory: {}, dailyReward: null, raw: null };
+
+    // 1. Check if user is currently inside a live Roblox server
+    for (const server of Object.values(activeServers)) {
+        if (server.players && server.players[userId]) {
+            return {
+                isOnline: true,
+                cash: server.players[userId].cash || 0,
+                stock: server.players[userId].stock || {},
+                inventory: server.players[userId].inventory || {},
+                dailyReward: server.players[userId].dailyReward || null,
+                raw: null
+            };
+        }
+    }
+
+    // 2. Check local memory cache (15 seconds TTL)
+    const cached = offlinePlayerCache[userId];
+    if (cached && (Date.now() - cached.timestamp < 15000)) {
+        return {
+            isOnline: false,
+            cash: cached.data.Coins || 0,
+            stock: {},
+            inventory: cached.data.Inventory || {},
+            dailyReward: null,
+            raw: cached.data
+        };
+    }
+
+    // 3. Fetch from Roblox Open Cloud DataStore v1
+    try {
+        const entryKey = `Player_${userId}`;
+        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=BuildUrBase_PlayerData_v9&entryKey=${encodeURIComponent(entryKey)}`;
+        const res = await fetch(url, {
+            headers: { 'x-api-key': ROBLOX_OPENCLOUD_API_KEY }
+        });
+
+        if (res.ok) {
+            const rawData = await res.json();
+            offlinePlayerCache[userId] = {
+                data: rawData,
+                timestamp: Date.now()
+            };
+            console.log(`[OpenCloud] Fetched live DataStore for ${userId}: ${rawData.Coins} Coins, ${Object.keys(rawData.Inventory || {}).length} inventory items`);
+            return {
+                isOnline: false,
+                cash: rawData.Coins || 0,
+                stock: {},
+                inventory: rawData.Inventory || {},
+                dailyReward: null,
+                raw: rawData
+            };
+        } else {
+            console.warn(`[OpenCloud] Fetch returned status ${res.status} for ${userId}`);
+        }
+    } catch (e) {
+        console.error(`[OpenCloud] Error fetching DataStore for ${userId}:`, e);
+    }
+
+    // Fallback to older cache if available
+    if (cached) {
+        return {
+            isOnline: false,
+            cash: cached.data.Coins || 0,
+            stock: {},
+            inventory: cached.data.Inventory || {},
+            dailyReward: null,
+            raw: cached.data
+        };
+    }
+
+    return {
+        isOnline: false,
+        cash: 0,
+        stock: {},
+        inventory: {},
+        dailyReward: null,
+        raw: null
+    };
+}
+
+async function saveRobloxPlayerData(userId, rawData) {
+    if (!userId || !rawData) return false;
+    try {
+        const entryKey = `Player_${userId}`;
+        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=BuildUrBase_PlayerData_v9&entryKey=${encodeURIComponent(entryKey)}`;
+        const bodyStr = JSON.stringify(rawData);
+        const md5 = crypto.createHash('md5').update(bodyStr).digest('base64');
+        
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'x-api-key': ROBLOX_OPENCLOUD_API_KEY,
+                'content-type': 'application/json',
+                'content-md5': md5
+            },
+            body: bodyStr
+        });
+
+        if (res.ok) {
+            offlinePlayerCache[userId] = {
+                data: rawData,
+                timestamp: Date.now()
+            };
+            console.log(`[OpenCloud] Successfully saved DataStore for Player_${userId}`);
+            return true;
+        } else {
+            console.error(`[OpenCloud] Save failed for ${userId}: status ${res.status}`, await res.text());
+            return false;
+        }
+    } catch (e) {
+        console.error(`[OpenCloud] Error saving DataStore for ${userId}:`, e);
+        return false;
+    }
+}
+
 // Live Server Sync Data
 const activeServers = {}; // Format: { serverId: { lastSeen: Date.now(), players: { "userId": { cash: 100 } } } }
 
@@ -104,37 +229,40 @@ app.post('/api/updatePlayerStats', (req, res) => {
     }
 });
 
-// 3. Frontend Polling Endpoint
-app.get('/api/status/:userId', (req, res) => {
+// 3. Frontend Polling Endpoint (Hybrid: In-Game Live Server + Offline Open Cloud DataStore)
+app.get('/api/status/:userId', async (req, res) => {
     const userId = req.params.userId;
     const now = Date.now();
-    let isServerOnline = false;
+    let isGameServerRunning = false;
     let currentServerId = null;
-    let playerCash = 0;
-    let playerStock = {};
-    let playerInventory = {};
-    let dailyReward = null;
     
-    // A server is considered online if it sent a heartbeat in the last 10 seconds (10,000 ms)
+    // Check if any Roblox game server is online
     for (const [serverId, serverData] of Object.entries(activeServers)) {
         if (now - serverData.lastSeen < 10000) {
-            isServerOnline = true;
+            isGameServerRunning = true;
             currentServerId = serverId;
-            // Check if our player is in this server
-            if (serverData.players[userId]) {
-                playerCash = serverData.players[userId].cash;
-                playerStock = serverData.players[userId].stock || {};
-                playerInventory = serverData.players[userId].inventory || {};
-                dailyReward = serverData.players[userId].dailyReward || null;
-                break;
-            }
+            break;
         } else {
             // Clean up stale servers
             delete activeServers[serverId];
         }
     }
+
+    // Retrieve player data (Live Server if player is in-game, or Open Cloud if offline)
+    const playerData = await getRobloxPlayerData(userId);
     
-    res.status(200).json({ isServerOnline, currentServerId, playerCash, playerStock, playerInventory, dailyReward, serverTime: Math.floor(now / 1000) });
+    res.status(200).json({
+        isServerOnline: isGameServerRunning || true, // Website stays functional 24/7 via Open Cloud
+        isGameServerRunning: isGameServerRunning,
+        isPlayerInGame: playerData.isOnline,
+        isOpenCloudActive: true,
+        currentServerId,
+        playerCash: playerData.cash,
+        playerStock: playerData.stock,
+        playerInventory: playerData.inventory,
+        dailyReward: playerData.dailyReward,
+        serverTime: Math.floor(now / 1000)
+    });
 });
 
 app.get('/api/debugServers', (req, res) => {
@@ -303,7 +431,7 @@ app.get('/api/auction/status', (req, res) => {
     });
 });
 
-app.post('/api/auction/bid', (req, res) => {
+app.post('/api/auction/bid', async (req, res) => {
     const { userId, username, bidAmount } = req.body;
     if (!userId || !bidAmount) return res.status(400).json({ error: 'Missing params' });
 
@@ -314,17 +442,10 @@ app.post('/api/auction/bid', (req, res) => {
         return res.status(400).json({ error: `Bid is too low. Minimum required: ${minRequiredBid} 🪙.` });
     }
 
-    // Check if player has the money across all servers
-    let actualCash = 0;
-    for (const server of Object.values(activeServers)) {
-        if (server.players[userId]) {
-            actualCash = server.players[userId].cash;
-            break;
-        }
-    }
-
-    if (actualCash < bidAmount) {
-        return res.status(400).json({ error: 'Not enough in-game coins!' });
+    // Check if player has the money (live in-game or Open Cloud DataStore)
+    const bidderData = await getRobloxPlayerData(userId);
+    if (bidderData.cash < bidAmount) {
+        return res.status(400).json({ error: 'Not enough coins!' });
     }
 
     currentAuction.highestBidderId = userId;
@@ -370,14 +491,8 @@ app.post('/api/marketplace/createOffer', async (req, res) => {
     const finalPrice = payoutNum; // Other players buy for this exact price
 
     // Validate seller has enough coins to pay 5% creation fee
-    let sellerCash = 0;
-    for (const server of Object.values(activeServers)) {
-        if (server.players && server.players[sellerId]) {
-            sellerCash = server.players[sellerId].cash || 0;
-            break;
-        }
-    }
-    if (sellerCash < fee) {
+    const sellerData = await getRobloxPlayerData(sellerId);
+    if (sellerData.cash < fee) {
         return res.status(400).json({ error: `You need at least ${fee} 🪙 to pay the 5% creation fee!` });
     }
 
@@ -391,19 +506,8 @@ app.post('/api/marketplace/createOffer', async (req, res) => {
         }
     }
 
-    // Validate inventory: Player must be currently in-game with verified unplaced inventory
-    let sellerInv = null;
-    for (const server of Object.values(activeServers)) {
-        if (server.players && server.players[sellerId] && server.players[sellerId].inventory) {
-            sellerInv = server.players[sellerId].inventory;
-            break;
-        }
-    }
-
-    if (!sellerInv) {
-        return res.status(400).json({ error: 'You must be in the Roblox game to create an offer so your unplaced inventory can be verified!' });
-    }
-
+    // Validate inventory: Unplaced items only
+    const sellerInv = sellerData.inventory || {};
     for (const it of items) {
         const owned = sellerInv[it.itemKey] || 0;
         if (owned < it.quantity) {
@@ -451,18 +555,31 @@ app.post('/api/marketplace/createOffer', async (req, res) => {
         status: 'ACTIVE'
     };
 
-    // Queue deduction action for Roblox server (items + 5% fee)
-    const activeServerIds = Object.keys(activeServers);
-    if (activeServerIds.length > 0) {
-        const targetServerId = activeServerIds[0];
-        if (!actionQueues[targetServerId]) actionQueues[targetServerId] = [];
-        actionQueues[targetServerId].push({
-            actionId: 'mkt_deduct_' + Math.random().toString(36).substr(2, 9),
-            action: 'MARKETPLACE_DEDUCT_ITEMS',
-            userId: sellerId,
-            items: enrichedItems,
-            fee: fee
-        });
+    // Deduct items and 5% fee from seller (In-Game queue or Open Cloud offline)
+    if (sellerData.isOnline) {
+        const activeServerIds = Object.keys(activeServers);
+        if (activeServerIds.length > 0) {
+            const targetServerId = activeServerIds[0];
+            if (!actionQueues[targetServerId]) actionQueues[targetServerId] = [];
+            actionQueues[targetServerId].push({
+                actionId: 'mkt_deduct_' + Math.random().toString(36).substr(2, 9),
+                action: 'MARKETPLACE_DEDUCT_ITEMS',
+                userId: sellerId,
+                items: enrichedItems,
+                fee: fee
+            });
+        }
+    } else {
+        // Offline: Deduct fee and items via Open Cloud
+        if (sellerData.raw) {
+            const raw = sellerData.raw;
+            raw.Coins = Math.max(0, (raw.Coins || 0) - fee);
+            raw.Inventory = raw.Inventory || {};
+            for (const it of enrichedItems) {
+                raw.Inventory[it.itemKey] = Math.max(0, (raw.Inventory[it.itemKey] || 0) - it.quantity);
+            }
+            await saveRobloxPlayerData(sellerId, raw);
+        }
     }
 
     if (mongoose.connection.readyState === 1) {
@@ -502,16 +619,9 @@ app.post('/api/marketplace/buyOffer', async (req, res) => {
         return res.status(400).json({ error: 'You cannot buy your own offer!' });
     }
 
-    // Verify buyer cash
-    let buyerCash = 0;
-    for (const server of Object.values(activeServers)) {
-        if (server.players && server.players[buyerId]) {
-            buyerCash = server.players[buyerId].cash;
-            break;
-        }
-    }
-
-    if (buyerCash < offer.price) {
+    // Verify buyer cash (Live Server or Open Cloud)
+    const buyerData = await getRobloxPlayerData(buyerId);
+    if (buyerData.cash < offer.price) {
         return res.status(400).json({ error: `Not enough coins! You need ${offer.price} 🪙.` });
     }
 
@@ -521,7 +631,7 @@ app.post('/api/marketplace/buyOffer', async (req, res) => {
         await MarketplaceOffer.updateOne({ offerId }, { status: 'SOLD' });
     }
 
-    // Queue delivery action to Roblox server
+    // Delivery: If a server is running, dispatch live action; otherwise update via Open Cloud
     const activeServerIds = Object.keys(activeServers);
     if (activeServerIds.length > 0) {
         const targetServerId = activeServerIds[0];
@@ -535,6 +645,26 @@ app.post('/api/marketplace/buyOffer', async (req, res) => {
             price: offer.price,
             sellerPayout: offer.sellerPayout
         });
+    } else {
+        // Offline Open Cloud delivery
+        // 1. Buyer: deduct price, add items
+        if (buyerData.raw) {
+            const bRaw = buyerData.raw;
+            bRaw.Coins = Math.max(0, (bRaw.Coins || 0) - offer.price);
+            bRaw.Inventory = bRaw.Inventory || {};
+            for (const it of offer.items) {
+                bRaw.Inventory[it.itemKey] = (bRaw.Inventory[it.itemKey] || 0) + (it.quantity || 1);
+            }
+            await saveRobloxPlayerData(buyerId, bRaw);
+        }
+
+        // 2. Seller: credit sellerPayout
+        const sellerData = await getRobloxPlayerData(offer.sellerId);
+        if (sellerData.raw) {
+            const sRaw = sellerData.raw;
+            sRaw.Coins = (sRaw.Coins || 0) + offer.sellerPayout;
+            await saveRobloxPlayerData(offer.sellerId, sRaw);
+        }
     }
 
     console.log(`[Marketplace] ${buyerName} bought offer ${offerId} from ${offer.sellerName} for ${offer.price} 🪙!`);
@@ -574,6 +704,17 @@ app.post('/api/marketplace/cancelOffer', async (req, res) => {
             sellerId: userId,
             items: offer.items
         });
+    } else {
+        // Return items offline via Open Cloud
+        const sellerData = await getRobloxPlayerData(userId);
+        if (sellerData.raw) {
+            const raw = sellerData.raw;
+            raw.Inventory = raw.Inventory || {};
+            for (const it of offer.items) {
+                raw.Inventory[it.itemKey] = (raw.Inventory[it.itemKey] || 0) + (it.quantity || 1);
+            }
+            await saveRobloxPlayerData(userId, raw);
+        }
     }
 
     console.log(`[Marketplace] ${offer.sellerName} cancelled offer ${offerId}.`);
