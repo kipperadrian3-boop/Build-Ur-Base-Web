@@ -990,48 +990,99 @@ button:hover {
 }
 
 .mkt-card-items {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.45rem;
+    max-height: 66px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin-bottom: 0.85rem;
+    padding-right: 0.15rem;
+}
+
+.mkt-card-items::-webkit-scrollbar {
+    width: 4px;
+}
+
+.mkt-card-items::-webkit-scrollbar-track {
+    background: #fdfaf6;
+    border-radius: 4px;
+}
+
+.mkt-card-items::-webkit-scrollbar-thumb {
+    background: #d9cbbe;
+    border-radius: 4px;
+}
+
+.mkt-card-items::-webkit-scrollbar-thumb:hover {
+    background: #bfa895;
+}
+
+.mkt-card-item-chip {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
-    margin-bottom: 0.85rem;
-    min-height: 50px;
-}
-
-.mkt-card-item-row {
-    display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: center;
     background: #fdfbf7;
-    padding: 0.35rem 0.5rem;
+    border: 1.5px solid #ebdccb;
     border-radius: 8px;
-    border: 1px solid #f2e9de;
+    height: 60px;
+    padding: 0.25rem 0.2rem;
+    box-sizing: border-box;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    user-select: none;
+    overflow: hidden;
 }
 
-.mkt-card-item-row img {
+.mkt-card-item-chip:hover {
+    border-color: #8b5a2b;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(139, 90, 43, 0.15);
+}
+
+.mkt-card-item-chip img {
     width: 28px;
     height: 28px;
     object-fit: contain;
     border-radius: 4px;
-    background: #f5f0eb;
 }
 
-.mkt-card-item-name {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: #4a3b32;
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.mkt-card-item-qty {
-    font-size: 0.82rem;
-    font-weight: 700;
+.mkt-chip-qty {
+    font-size: 0.72rem;
+    font-weight: 800;
     color: #8b5a2b;
-    background: #f5ede4;
-    padding: 0.15rem 0.4rem;
+    background: #fdf5ea;
+    border: 1px solid #ebdccb;
+    padding: 0.05rem 0.35rem;
     border-radius: 6px;
+    margin-top: 0.15rem;
+    line-height: 1;
+}
+
+.mkt-chip-name-hover {
+    position: absolute;
+    inset: 0;
+    background: rgba(45, 30, 20, 0.92);
+    color: #ffffff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.2rem;
+    border-radius: 7px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+    line-height: 1.15;
+    word-break: break-word;
+}
+
+.mkt-card-item-chip:hover .mkt-chip-name-hover {
+    opacity: 1;
 }
 
 .mkt-card-footer {

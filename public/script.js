@@ -1023,10 +1023,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const img = it.imageUrl || details.imageUrl || '';
                 const name = it.displayName || details.displayName || it.itemKey;
                 itemsHtml += `
-                    <div class="mkt-card-item-row">
-                        ${img ? `<img src="${img}" alt="${name}">` : `<div style="width:28px;height:28px;background:#f5f0eb;border-radius:4px;"></div>`}
-                        <span class="mkt-card-item-name">${name}</span>
-                        <span class="mkt-card-item-qty">x${it.quantity}</span>
+                    <div class="mkt-card-item-chip" title="${name}">
+                        ${img ? `<img src="${img}" alt="${name}">` : `<div style="width:32px;height:32px;background:#f5f0eb;border-radius:4px;"></div>`}
+                        <span class="mkt-chip-qty">x${it.quantity}</span>
+                        <div class="mkt-chip-name-hover">${name}</div>
                     </div>
                 `;
             });
