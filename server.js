@@ -381,7 +381,17 @@ app.post('/api/marketplace/createOffer', async (req, res) => {
         return res.status(400).json({ error: `You need at least ${fee} 🪙 to pay the 5% creation fee!` });
     }
 
-    // Validate inventory if player is in an active server
+    // Forbid Chests completely from trading
+    for (const it of items) {
+        const isChest = (it.category && it.category.toLowerCase() === 'chests') 
+            || (it.itemKey && it.itemKey.toLowerCase().includes('chest'))
+            || (it.displayName && it.displayName.toLowerCase().includes('chest'));
+        if (isChest) {
+            return res.status(400).json({ error: 'Chests cannot be traded or offered on the marketplace!' });
+        }
+    }
+
+    // Validate inventory: Player must be currently in-game with verified unplaced inventory
     let sellerInv = null;
     for (const server of Object.values(activeServers)) {
         if (server.players && server.players[sellerId] && server.players[sellerId].inventory) {
@@ -390,12 +400,16 @@ app.post('/api/marketplace/createOffer', async (req, res) => {
         }
     }
 
-    if (sellerInv) {
-        for (const it of items) {
-            const owned = sellerInv[it.itemKey] || 0;
-            if (owned < it.quantity) {
-                return res.status(400).json({ error: `Not enough ${it.displayName || it.itemKey} in inventory! (Owned: ${owned}, In Offer: ${it.quantity})` });
-            }
+    if (!sellerInv) {
+        return res.status(400).json({ error: 'You must be in the Roblox game to create an offer so your unplaced inventory can be verified!' });
+    }
+
+    for (const it of items) {
+        const owned = sellerInv[it.itemKey] || 0;
+        if (owned < it.quantity) {
+            return res.status(400).json({ 
+                error: `Not enough unplaced ${it.displayName || it.itemKey} in your inventory! (You own ${owned} unplaced items; blocks built on your base cannot be traded).` 
+            });
         }
     }
 

@@ -1139,10 +1139,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!mktMyInventoryList) return;
         mktMyInventoryList.innerHTML = '';
 
-        const invKeys = Object.keys(playerInventory).filter(k => playerInventory[k] > 0);
+        const invKeys = Object.keys(playerInventory).filter(k => {
+            if (!playerInventory[k] || playerInventory[k] <= 0) return false;
+            const details = getItemDetails(k);
+            const isChest = (details.category && details.category.toLowerCase() === 'chests')
+                || k.toLowerCase().includes('chest')
+                || (details.displayName && details.displayName.toLowerCase().includes('chest'));
+            return !isChest;
+        });
 
         if (invKeys.length === 0) {
-            mktMyInventoryList.innerHTML = '<p class="mkt-empty-text">Your Roblox inventory is empty or you are not in the game. Note: Items already placed on your base cannot be sold here.</p>';
+            mktMyInventoryList.innerHTML = '<p class="mkt-empty-text">No eligible unplaced items found in your Roblox inventory. (Chests and blocks built on your base cannot be traded).</p>';
             return;
         }
 
@@ -1180,6 +1187,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function addItemToBundle(itemKey, details) {
+        const isChest = (details.category && details.category.toLowerCase() === 'chests')
+            || itemKey.toLowerCase().includes('chest')
+            || (details.displayName && details.displayName.toLowerCase().includes('chest'));
+        if (isChest) {
+            showMessage("Chests cannot be traded!", false);
+            return;
+        }
+
         const totalOwned = playerInventory[itemKey] || 0;
         if (!currentOfferBundle[itemKey]) {
             currentOfferBundle[itemKey] = {
