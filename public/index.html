@@ -108,11 +108,80 @@
             </div>
         </div>
 
+        <!-- Sell & Buy Marketplace View -->
+        <div id="marketplaceView" class="view-content hidden">
+            <!-- Header -->
+            <div class="mkt-header">
+                <div>
+                    <h2>Sell & Buy</h2>
+                    <p class="mkt-subtitle">Community Player-to-Player Marketplace</p>
+                </div>
+                <button id="mktRefreshBtn" class="mkt-refresh-btn" title="Refresh Listings">🔄 Refresh</button>
+            </div>
+
+            <!-- Active Listings (Top Section, 3 per row) -->
+            <div class="mkt-section-title">
+                <h3>Active Listings</h3>
+                <span id="mktListingsCount" class="mkt-badge">0 Listings</span>
+            </div>
+            
+            <div class="mkt-grid" id="mktOffersGrid">
+                <!-- Injected via JS -->
+            </div>
+
+            <!-- Create Offer Section (Bottom Section) -->
+            <div class="mkt-create-card">
+                <div class="mkt-create-header">
+                    <h3>Create Offer</h3>
+                    <p>Select items from your Roblox inventory to sell to other players</p>
+                </div>
+
+                <div class="mkt-create-columns">
+                    <!-- Left Window: My Inventory -->
+                    <div class="mkt-window mkt-inv-window">
+                        <div class="mkt-window-title">
+                            <h4>My Inventory</h4>
+                            <span class="mkt-hint">Click item to add +1</span>
+                        </div>
+                        <div class="mkt-inv-list" id="mktMyInventoryList">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Right Window: Offer Bundle -->
+                    <div class="mkt-window mkt-bundle-window">
+                        <div class="mkt-window-title">
+                            <h4>Offer Content</h4>
+                            <button id="mktClearBundleBtn" class="mkt-clear-btn" style="display:none;">Clear</button>
+                        </div>
+                        <div class="mkt-bundle-list" id="mktBundleList">
+                            <p class="mkt-empty-text">No items added yet. Click items on the left!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price and Creation Action Bar -->
+                <div class="mkt-action-bar">
+                    <div class="mkt-price-box">
+                        <label for="mktPayoutInput">Your Desired Price</label>
+                        <div class="mkt-input-wrapper">
+                            <input type="number" id="mktPayoutInput" placeholder="e.g. 1000" min="1" step="1">
+                            <span class="coin-symbol">🪙</span>
+                        </div>
+                        <span class="mkt-fee-hint">+5% fee automatically added for buyers</span>
+                    </div>
+
+                    <button id="mktCreateBtn" class="mkt-create-btn" disabled>Create (0 🪙)</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Bottom Navigation -->
         <nav class="bottom-nav">
             <button class="nav-btn active" id="navIndexBtn">Index</button>
             <button class="nav-btn" id="navShopBtn">Shop</button>
             <button class="nav-btn" id="navAuctionBtn">Auction</button>
+            <button class="nav-btn" id="navMarketplaceBtn">Sell & Buy</button>
             <button class="nav-btn" id="navDailyBtn">Daily</button>
         </nav>
     </div>

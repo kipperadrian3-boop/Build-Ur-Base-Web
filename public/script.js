@@ -37,6 +37,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const auctionCurrentBid = document.getElementById('auctionCurrentBid');
     const auctionHighestBidder = document.getElementById('auctionHighestBidder');
     const auctionBidBtn = document.getElementById('auctionBidBtn');
+
+    // Marketplace Elements
+    const marketplaceView = document.getElementById('marketplaceView');
+    const navMarketplaceBtn = document.getElementById('navMarketplaceBtn');
+    const mktRefreshBtn = document.getElementById('mktRefreshBtn');
+    const mktListingsCount = document.getElementById('mktListingsCount');
+    const mktOffersGrid = document.getElementById('mktOffersGrid');
+    const mktMyInventoryList = document.getElementById('mktMyInventoryList');
+    const mktBundleList = document.getElementById('mktBundleList');
+    const mktClearBundleBtn = document.getElementById('mktClearBundleBtn');
+    const mktPayoutInput = document.getElementById('mktPayoutInput');
+    const mktCreateBtn = document.getElementById('mktCreateBtn');
     
     // State
     let currentUser = null;
@@ -49,6 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let playerStock = {};
     let playerCash = 0;
     let playerDailyReward = null;
+    let playerInventory = {};
+    let currentOfferBundle = {};
     let dailyTimerInterval = null;
     let syncInterval = null;
     let auctionInterval = null;
@@ -186,6 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('roblox_web_code');
         localStorage.removeItem('roblox_web_user');
         currentUser = null;
+        currentOfferBundle = {};
         stopLiveSync();
         stopAuctionSync();
         mainAppView.classList.add('hidden');
@@ -225,6 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
             playerStock = data.playerStock || {};
             playerCash = data.playerCash || 0;
             playerDailyReward = data.dailyReward || null;
+            playerInventory = data.playerInventory || {};
             
             if (isServerOnline) {
                 serverStatusDiv.textContent = 'Server: Online';
@@ -239,6 +255,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update daily rewards if visible
             if (!dailyView.classList.contains('hidden')) {
                 renderDailyRewards();
+            }
+
+            // Update marketplace if visible
+            if (marketplaceView && !marketplaceView.classList.contains('hidden')) {
+                renderMarketplaceInventory();
             }
             
             // Update shop stock in place if visible
@@ -825,10 +846,12 @@ document.addEventListener('DOMContentLoaded', () => {
         navShopBtn.classList.remove('active');
         navAuctionBtn.classList.remove('active');
         navDailyBtn.classList.remove('active');
+        if (navMarketplaceBtn) navMarketplaceBtn.classList.remove('active');
         indexView.classList.remove('hidden');
         shopView.classList.add('hidden');
         auctionView.classList.add('hidden');
         dailyView.classList.add('hidden');
+        if (marketplaceView) marketplaceView.classList.add('hidden');
     });
 
     navShopBtn.addEventListener('click', () => {
@@ -836,10 +859,12 @@ document.addEventListener('DOMContentLoaded', () => {
         navIndexBtn.classList.remove('active');
         navAuctionBtn.classList.remove('active');
         navDailyBtn.classList.remove('active');
+        if (navMarketplaceBtn) navMarketplaceBtn.classList.remove('active');
         shopView.classList.remove('hidden');
         indexView.classList.add('hidden');
         auctionView.classList.add('hidden');
         dailyView.classList.add('hidden');
+        if (marketplaceView) marketplaceView.classList.add('hidden');
         renderShopCategory(currentShopCategory);
     });
 
@@ -848,10 +873,12 @@ document.addEventListener('DOMContentLoaded', () => {
         navIndexBtn.classList.remove('active');
         navShopBtn.classList.remove('active');
         navDailyBtn.classList.remove('active');
+        if (navMarketplaceBtn) navMarketplaceBtn.classList.remove('active');
         auctionView.classList.remove('hidden');
         indexView.classList.add('hidden');
         shopView.classList.add('hidden');
         dailyView.classList.add('hidden');
+        if (marketplaceView) marketplaceView.classList.add('hidden');
     });
 
     navDailyBtn.addEventListener('click', () => {
@@ -859,12 +886,446 @@ document.addEventListener('DOMContentLoaded', () => {
         navIndexBtn.classList.remove('active');
         navShopBtn.classList.remove('active');
         navAuctionBtn.classList.remove('active');
+        if (navMarketplaceBtn) navMarketplaceBtn.classList.remove('active');
         dailyView.classList.remove('hidden');
         indexView.classList.add('hidden');
         shopView.classList.add('hidden');
         auctionView.classList.add('hidden');
+        if (marketplaceView) marketplaceView.classList.add('hidden');
         renderDailyRewards();
     });
+
+    if (navMarketplaceBtn) {
+        navMarketplaceBtn.addEventListener('click', () => {
+            navMarketplaceBtn.classList.add('active');
+            navIndexBtn.classList.remove('active');
+            navShopBtn.classList.remove('active');
+            navAuctionBtn.classList.remove('active');
+            navDailyBtn.classList.remove('active');
+            marketplaceView.classList.remove('hidden');
+            indexView.classList.add('hidden');
+            shopView.classList.add('hidden');
+            auctionView.classList.add('hidden');
+            dailyView.classList.add('hidden');
+
+            fetchMarketplaceOffers();
+            renderMarketplaceInventory();
+            updateMarketplaceCreateButton();
+        });
+    }
+
+    // --- P2P Marketplace ("Sell & Buy") Logic ---
+
+    function getItemDetails(itemKey) {
+        if (gameConfigs) {
+            for (const cat in gameConfigs) {
+                if (gameConfigs[cat] && gameConfigs[cat][itemKey]) {
+                    const cfg = gameConfigs[cat][itemKey];
+                    return {
+                        category: cat,
+                        displayName: cfg.DisplayName || itemKey,
+                        imageUrl: cfg.imageUrl || ''
+                    };
+                }
+            }
+        }
+        return {
+            category: 'Items',
+            displayName: itemKey,
+            imageUrl: ''
+        };
+    }
+
+    function formatTimeAgo(dateInput) {
+        if (!dateInput) return '';
+        const now = Date.now();
+        const then = new Date(dateInput).getTime();
+        const diffSec = Math.max(0, Math.floor((now - then) / 1000));
+        if (diffSec < 60) return 'Just now';
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `${diffMin}m ago`;
+        const diffHour = Math.floor(diffMin / 60);
+        if (diffHour < 24) return `${diffHour}h ago`;
+        const diffDay = Math.floor(diffHour / 24);
+        return `${diffDay}d ago`;
+    }
+
+    async function fetchMarketplaceOffers() {
+        try {
+            const res = await fetch('https://build-ur-base-web.onrender.com/api/marketplace/offers');
+            const data = await res.json();
+            if (data.success && Array.isArray(data.offers)) {
+                renderMarketplaceOffers(data.offers);
+            }
+        } catch (err) {
+            console.error('[Marketplace] Error fetching offers:', err);
+        }
+    }
+
+    function renderMarketplaceOffers(offers) {
+        if (!mktOffersGrid || !mktListingsCount) return;
+        mktListingsCount.textContent = `${offers.length} ${offers.length === 1 ? 'Listing' : 'Listings'}`;
+        mktOffersGrid.innerHTML = '';
+
+        if (offers.length === 0) {
+            mktOffersGrid.innerHTML = '<div class="mkt-empty-grid">No active marketplace offers right now. Be the first to create one below!</div>';
+            return;
+        }
+
+        offers.forEach(offer => {
+            const card = document.createElement('div');
+            card.className = 'mkt-card';
+
+            const isOwnOffer = currentUser && String(currentUser.userId) === String(offer.sellerId);
+            const canAfford = playerCash >= offer.price;
+
+            let itemsHtml = '';
+            (offer.items || []).forEach(it => {
+                const details = getItemDetails(it.itemKey);
+                const img = it.imageUrl || details.imageUrl || '';
+                const name = it.displayName || details.displayName || it.itemKey;
+                itemsHtml += `
+                    <div class="mkt-card-item-row">
+                        ${img ? `<img src="${img}" alt="${name}">` : `<div style="width:28px;height:28px;background:#f5f0eb;border-radius:4px;"></div>`}
+                        <span class="mkt-card-item-name">${name}</span>
+                        <span class="mkt-card-item-qty">x${it.quantity}</span>
+                    </div>
+                `;
+            });
+
+            const avatarStyle = offer.sellerAvatar ? `style="background-image: url('${offer.sellerAvatar}')"` : '';
+            const timeAgo = formatTimeAgo(offer.createdAt);
+
+            card.innerHTML = `
+                <div class="mkt-card-seller">
+                    <div class="mkt-seller-avatar" ${avatarStyle}></div>
+                    <div class="mkt-seller-info">
+                        <span class="mkt-seller-name">${offer.sellerName}${isOwnOffer ? ' (You)' : ''}</span>
+                        <span class="mkt-offer-time">${timeAgo}</span>
+                    </div>
+                </div>
+                <div class="mkt-card-items">
+                    ${itemsHtml}
+                </div>
+                <div class="mkt-card-footer">
+                    <div class="mkt-card-price">
+                        <span class="mkt-price-label">Price</span>
+                        <span class="mkt-price-val">${offer.price.toLocaleString('de-DE')} 🪙</span>
+                    </div>
+                    ${isOwnOffer 
+                        ? `<button class="mkt-cancel-btn" data-offer-id="${offer.offerId}">Cancel</button>`
+                        : `<button class="mkt-buy-btn" data-offer-id="${offer.offerId}" ${!canAfford ? 'disabled' : ''}>${canAfford ? `Buy` : `Need Coins`}</button>`
+                    }
+                </div>
+            `;
+
+            if (isOwnOffer) {
+                const cancelBtn = card.querySelector('.mkt-cancel-btn');
+                cancelBtn.addEventListener('click', () => cancelMarketplaceOffer(offer.offerId));
+            } else {
+                const buyBtn = card.querySelector('.mkt-buy-btn');
+                if (buyBtn && canAfford) {
+                    buyBtn.addEventListener('click', () => buyMarketplaceOffer(offer.offerId, offer.price));
+                }
+            }
+
+            mktOffersGrid.appendChild(card);
+        });
+    }
+
+    async function buyMarketplaceOffer(offerId, price) {
+        if (!currentUser) return;
+        if (playerCash < price) {
+            showMessage("You don't have enough coins for this offer!", false);
+            return;
+        }
+
+        const confirmBuy = confirm(`Do you want to buy this offer for ${price.toLocaleString('de-DE')} coins?`);
+        if (!confirmBuy) return;
+
+        try {
+            showMessage("Purchasing offer...", true);
+            const res = await fetch('https://build-ur-base-web.onrender.com/api/marketplace/buyOffer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    buyerId: currentUser.userId,
+                    buyerName: currentUser.username,
+                    offerId: offerId
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showMessage("Offer purchased successfully! Items are being delivered.", true);
+                fetchMarketplaceOffers();
+                fetchLiveStatus();
+            } else {
+                showMessage(data.error || "Failed to purchase offer.", false);
+            }
+        } catch (err) {
+            console.error('[Marketplace] Buy error:', err);
+            showMessage("Failed to contact server.", false);
+        }
+    }
+
+    async function cancelMarketplaceOffer(offerId) {
+        if (!currentUser) return;
+        const confirmCancel = confirm("Do you want to cancel this offer and return the items to your inventory?");
+        if (!confirmCancel) return;
+
+        try {
+            showMessage("Cancelling offer...", true);
+            const res = await fetch('https://build-ur-base-web.onrender.com/api/marketplace/cancelOffer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUser.userId,
+                    offerId: offerId
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showMessage("Offer cancelled. Items returned to your inventory!", true);
+                fetchMarketplaceOffers();
+                fetchLiveStatus();
+            } else {
+                showMessage(data.error || "Failed to cancel offer.", false);
+            }
+        } catch (err) {
+            console.error('[Marketplace] Cancel error:', err);
+            showMessage("Failed to contact server.", false);
+        }
+    }
+
+    function renderMarketplaceInventory() {
+        if (!mktMyInventoryList) return;
+        mktMyInventoryList.innerHTML = '';
+
+        const invKeys = Object.keys(playerInventory).filter(k => playerInventory[k] > 0);
+
+        if (invKeys.length === 0) {
+            mktMyInventoryList.innerHTML = '<p class="mkt-empty-text">Your Roblox inventory is empty or you are not in the game. Note: Items already placed on your base cannot be sold here.</p>';
+            return;
+        }
+
+        invKeys.forEach(itemKey => {
+            const totalCount = playerInventory[itemKey] || 0;
+            const inBundle = currentOfferBundle[itemKey] ? currentOfferBundle[itemKey].quantity : 0;
+            const remaining = totalCount - inBundle;
+
+            const details = getItemDetails(itemKey);
+
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'mkt-inv-item';
+            if (remaining <= 0) {
+                itemDiv.style.opacity = '0.4';
+                itemDiv.style.cursor = 'not-allowed';
+            }
+
+            itemDiv.innerHTML = `
+                ${details.imageUrl ? `<img src="${details.imageUrl}" alt="${details.displayName}">` : `<div style="width:34px;height:34px;background:#f7f2eb;border-radius:6px;"></div>`}
+                <div class="mkt-inv-item-info">
+                    <span class="mkt-inv-item-name">${details.displayName}</span>
+                    <span class="mkt-inv-item-cat">${details.category}</span>
+                </div>
+                <span class="mkt-inv-item-count">x${remaining}</span>
+            `;
+
+            if (remaining > 0) {
+                itemDiv.addEventListener('click', () => {
+                    addItemToBundle(itemKey, details);
+                });
+            }
+
+            mktMyInventoryList.appendChild(itemDiv);
+        });
+    }
+
+    function addItemToBundle(itemKey, details) {
+        const totalOwned = playerInventory[itemKey] || 0;
+        if (!currentOfferBundle[itemKey]) {
+            currentOfferBundle[itemKey] = {
+                itemKey: itemKey,
+                category: details.category,
+                displayName: details.displayName,
+                imageUrl: details.imageUrl,
+                quantity: 1
+            };
+        } else {
+            if (currentOfferBundle[itemKey].quantity < totalOwned) {
+                currentOfferBundle[itemKey].quantity++;
+            }
+        }
+
+        renderMarketplaceBundle();
+        renderMarketplaceInventory();
+        updateMarketplaceCreateButton();
+    }
+
+    function removeItemFromBundle(itemKey) {
+        if (currentOfferBundle[itemKey]) {
+            currentOfferBundle[itemKey].quantity--;
+            if (currentOfferBundle[itemKey].quantity <= 0) {
+                delete currentOfferBundle[itemKey];
+            }
+        }
+        renderMarketplaceBundle();
+        renderMarketplaceInventory();
+        updateMarketplaceCreateButton();
+    }
+
+    function deleteItemFromBundle(itemKey) {
+        if (currentOfferBundle[itemKey]) {
+            delete currentOfferBundle[itemKey];
+        }
+        renderMarketplaceBundle();
+        renderMarketplaceInventory();
+        updateMarketplaceCreateButton();
+    }
+
+    function clearBundle() {
+        currentOfferBundle = {};
+        renderMarketplaceBundle();
+        renderMarketplaceInventory();
+        updateMarketplaceCreateButton();
+    }
+
+    function renderMarketplaceBundle() {
+        if (!mktBundleList) return;
+        mktBundleList.innerHTML = '';
+
+        const bundleKeys = Object.keys(currentOfferBundle);
+
+        if (bundleKeys.length === 0) {
+            mktBundleList.innerHTML = '<p class="mkt-empty-text">No items added yet. Click items on the left!</p>';
+            if (mktClearBundleBtn) mktClearBundleBtn.style.display = 'none';
+            return;
+        }
+
+        if (mktClearBundleBtn) mktClearBundleBtn.style.display = 'inline-block';
+
+        bundleKeys.forEach(key => {
+            const item = currentOfferBundle[key];
+            const totalOwned = playerInventory[key] || 0;
+
+            const row = document.createElement('div');
+            row.className = 'mkt-bundle-item';
+
+            row.innerHTML = `
+                ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.displayName}">` : `<div style="width:30px;height:30px;background:#f7f2eb;border-radius:4px;"></div>`}
+                <span class="mkt-bundle-item-name">${item.displayName}</span>
+                <div class="mkt-qty-controls">
+                    <button class="mkt-qty-btn minus" title="Decrease">-</button>
+                    <span class="mkt-bundle-qty">${item.quantity}</span>
+                    <button class="mkt-qty-btn plus" title="Increase" ${item.quantity >= totalOwned ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''}>+</button>
+                </div>
+                <button class="mkt-remove-item-btn" title="Remove">✕</button>
+            `;
+
+            row.querySelector('.mkt-qty-btn.minus').addEventListener('click', () => removeItemFromBundle(key));
+            const plusBtn = row.querySelector('.mkt-qty-btn.plus');
+            if (item.quantity < totalOwned) {
+                plusBtn.addEventListener('click', () => {
+                    addItemToBundle(key, item);
+                });
+            }
+            row.querySelector('.mkt-remove-item-btn').addEventListener('click', () => deleteItemFromBundle(key));
+
+            mktBundleList.appendChild(row);
+        });
+    }
+
+    function updateMarketplaceCreateButton() {
+        if (!mktPayoutInput || !mktCreateBtn) return;
+
+        const payout = Math.max(0, parseInt(mktPayoutInput.value, 10) || 0);
+        const hasItems = Object.keys(currentOfferBundle).length > 0;
+
+        if (payout > 0) {
+            const fee = Math.ceil(payout * 0.05);
+            const finalPrice = payout + fee;
+            mktCreateBtn.textContent = `Create (${finalPrice.toLocaleString('de-DE')} 🪙)`;
+        } else {
+            mktCreateBtn.textContent = 'Create (0 🪙)';
+        }
+
+        if (hasItems && payout > 0) {
+            mktCreateBtn.disabled = false;
+        } else {
+            mktCreateBtn.disabled = true;
+        }
+    }
+
+    if (mktPayoutInput) {
+        mktPayoutInput.addEventListener('input', () => {
+            updateMarketplaceCreateButton();
+        });
+    }
+
+    if (mktClearBundleBtn) {
+        mktClearBundleBtn.addEventListener('click', clearBundle);
+    }
+
+    if (mktRefreshBtn) {
+        mktRefreshBtn.addEventListener('click', () => {
+            fetchMarketplaceOffers();
+            showMessage("Refreshed listings.", true);
+        });
+    }
+
+    if (mktCreateBtn) {
+        mktCreateBtn.addEventListener('click', async () => {
+            if (!currentUser) return;
+            const payout = Math.max(0, parseInt(mktPayoutInput.value, 10) || 0);
+            const bundleItems = Object.values(currentOfferBundle);
+
+            if (bundleItems.length === 0) {
+                showMessage("Please select at least one item for your offer!", false);
+                return;
+            }
+
+            if (payout <= 0) {
+                showMessage("Please enter a valid price greater than 0!", false);
+                return;
+            }
+
+            mktCreateBtn.disabled = true;
+            mktCreateBtn.textContent = "Creating...";
+
+            try {
+                const res = await fetch('https://build-ur-base-web.onrender.com/api/marketplace/createOffer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sellerId: currentUser.userId,
+                        sellerName: currentUser.username,
+                        sellerAvatar: currentUser.avatarUrl,
+                        items: bundleItems,
+                        sellerPayout: payout
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showMessage(`Offer created! Listed for ${data.offer.price.toLocaleString('de-DE')} 🪙 (Your payout: ${data.offer.sellerPayout.toLocaleString('de-DE')} 🪙).`, true);
+                    currentOfferBundle = {};
+                    mktPayoutInput.value = '';
+                    renderMarketplaceBundle();
+                    updateMarketplaceCreateButton();
+                    fetchMarketplaceOffers();
+                    fetchLiveStatus();
+                } else {
+                    showMessage(data.error || "Failed to create offer.", false);
+                    updateMarketplaceCreateButton();
+                }
+            } catch (err) {
+                console.error('[Marketplace] Create error:', err);
+                showMessage("Failed to contact server.", false);
+                updateMarketplaceCreateButton();
+            }
+        });
+    }
 
     let resizeTimer;
     window.addEventListener('resize', () => {

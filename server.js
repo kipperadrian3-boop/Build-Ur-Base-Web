@@ -29,6 +29,28 @@ const pendingAuctionSchema = new mongoose.Schema({
 });
 const PendingAuction = mongoose.model('PendingAuction', pendingAuctionSchema);
 
+// MongoDB Schema for Marketplace Offers
+const marketplaceOfferSchema = new mongoose.Schema({
+    offerId: { type: String, required: true, unique: true },
+    sellerId: { type: String, required: true },
+    sellerName: { type: String, required: true },
+    sellerAvatar: { type: String, default: '' },
+    items: [{
+        itemKey: String,
+        category: String,
+        displayName: String,
+        imageUrl: String,
+        quantity: Number
+    }],
+    sellerPayout: { type: Number, required: true },
+    price: { type: Number, required: true },
+    fee: { type: Number, required: true },
+    createdAt: { type: Date, default: Date.now },
+    status: { type: String, default: 'ACTIVE' }
+});
+const MarketplaceOffer = mongoose.model('MarketplaceOffer', marketplaceOfferSchema);
+const inMemoryMarketplaceOffers = [];
+
 // In-Memory Database for codes
 const codesDB = {};
 
@@ -90,6 +112,7 @@ app.get('/api/status/:userId', (req, res) => {
     let currentServerId = null;
     let playerCash = 0;
     let playerStock = {};
+    let playerInventory = {};
     let dailyReward = null;
     
     // A server is considered online if it sent a heartbeat in the last 10 seconds (10,000 ms)
@@ -101,6 +124,7 @@ app.get('/api/status/:userId', (req, res) => {
             if (serverData.players[userId]) {
                 playerCash = serverData.players[userId].cash;
                 playerStock = serverData.players[userId].stock || {};
+                playerInventory = serverData.players[userId].inventory || {};
                 dailyReward = serverData.players[userId].dailyReward || null;
                 break;
             }
@@ -110,7 +134,7 @@ app.get('/api/status/:userId', (req, res) => {
         }
     }
     
-    res.status(200).json({ isServerOnline, currentServerId, playerCash, playerStock, dailyReward, serverTime: Math.floor(now / 1000) });
+    res.status(200).json({ isServerOnline, currentServerId, playerCash, playerStock, playerInventory, dailyReward, serverTime: Math.floor(now / 1000) });
 });
 
 app.get('/api/debugServers', (req, res) => {
@@ -309,6 +333,224 @@ app.post('/api/auction/bid', (req, res) => {
     
     console.log(`[Auction] ${username} just bid ${bidAmount}!`);
     res.json({ success: true, message: 'Bid placed successfully!' });
+});
+
+// -------------------------
+// P2P MARKETPLACE ("SELL & BUY")
+// -------------------------
+
+// 1. Get all active offers
+app.get('/api/marketplace/offers', async (req, res) => {
+    try {
+        if (mongoose.connection.readyState === 1) {
+            const offers = await MarketplaceOffer.find({ status: 'ACTIVE' }).sort({ createdAt: -1 }).limit(60);
+            return res.status(200).json({ success: true, offers });
+        }
+        res.status(200).json({ success: true, offers: inMemoryMarketplaceOffers.filter(o => o.status === 'ACTIVE') });
+    } catch (err) {
+        console.error('[Marketplace] Error fetching offers:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// 2. Create an offer (+5% fee automatically added to price)
+app.post('/api/marketplace/createOffer', async (req, res) => {
+    const { sellerId, sellerName, sellerAvatar, items, sellerPayout } = req.body;
+    if (!sellerId || !sellerName || !items || !Array.isArray(items) || items.length === 0 || !sellerPayout) {
+        return res.status(400).json({ error: 'Missing parameters' });
+    }
+
+    const payoutNum = parseInt(sellerPayout, 10);
+    if (isNaN(payoutNum) || payoutNum <= 0) {
+        return res.status(400).json({ error: 'Price must be greater than 0.' });
+    }
+
+    // Calculate 5% fee and final listed price
+    const fee = Math.ceil(payoutNum * 0.05);
+    const finalPrice = payoutNum + fee;
+
+    // Validate inventory if player is in an active server
+    let sellerInv = null;
+    for (const server of Object.values(activeServers)) {
+        if (server.players && server.players[sellerId] && server.players[sellerId].inventory) {
+            sellerInv = server.players[sellerId].inventory;
+            break;
+        }
+    }
+
+    if (sellerInv) {
+        for (const it of items) {
+            const owned = sellerInv[it.itemKey] || 0;
+            if (owned < it.quantity) {
+                return res.status(400).json({ error: `Not enough ${it.displayName || it.itemKey} in inventory! (Owned: ${owned}, In Offer: ${it.quantity})` });
+            }
+        }
+    }
+
+    // Enrich items with DisplayName, ImageUrl, Category from gameConfigs
+    const enrichedItems = items.map(it => {
+        let cat = it.category || 'Blocks';
+        let disp = it.displayName || it.itemKey;
+        let img = it.imageUrl || '';
+        if (gameConfigs) {
+            for (const c in gameConfigs) {
+                if (gameConfigs[c][it.itemKey]) {
+                    cat = c;
+                    disp = gameConfigs[c][it.itemKey].DisplayName || disp;
+                    img = gameConfigs[c][it.itemKey].imageUrl || img;
+                    break;
+                }
+            }
+        }
+        return {
+            itemKey: it.itemKey,
+            category: cat,
+            displayName: disp,
+            imageUrl: img,
+            quantity: it.quantity
+        };
+    });
+
+    const offerId = 'off_' + Math.random().toString(36).substr(2, 9);
+    const offerDoc = {
+        offerId,
+        sellerId,
+        sellerName,
+        sellerAvatar: sellerAvatar || '',
+        items: enrichedItems,
+        sellerPayout: payoutNum,
+        price: finalPrice,
+        fee: fee,
+        createdAt: new Date(),
+        status: 'ACTIVE'
+    };
+
+    // Queue deduction action for Roblox server
+    const activeServerIds = Object.keys(activeServers);
+    if (activeServerIds.length > 0) {
+        const targetServerId = activeServerIds[0];
+        if (!actionQueues[targetServerId]) actionQueues[targetServerId] = [];
+        actionQueues[targetServerId].push({
+            actionId: 'mkt_deduct_' + Math.random().toString(36).substr(2, 9),
+            action: 'MARKETPLACE_DEDUCT_ITEMS',
+            userId: sellerId,
+            items: enrichedItems
+        });
+    }
+
+    if (mongoose.connection.readyState === 1) {
+        try {
+            const newOffer = new MarketplaceOffer(offerDoc);
+            await newOffer.save();
+        } catch (err) {
+            console.error('[Marketplace] Save error:', err);
+        }
+    }
+    inMemoryMarketplaceOffers.unshift(offerDoc);
+
+    console.log(`[Marketplace] ${sellerName} created offer ${offerId} with ${enrichedItems.length} items. Listed at ${finalPrice} 🪙 (Payout: ${payoutNum} 🪙).`);
+    res.status(200).json({ success: true, offer: offerDoc });
+});
+
+// 3. Buy an offer
+app.post('/api/marketplace/buyOffer', async (req, res) => {
+    const { buyerId, buyerName, offerId } = req.body;
+    if (!buyerId || !buyerName || !offerId) {
+        return res.status(400).json({ error: 'Missing parameters' });
+    }
+
+    let offer = null;
+    if (mongoose.connection.readyState === 1) {
+        offer = await MarketplaceOffer.findOne({ offerId, status: 'ACTIVE' });
+    }
+    if (!offer) {
+        offer = inMemoryMarketplaceOffers.find(o => o.offerId === offerId && o.status === 'ACTIVE');
+    }
+
+    if (!offer) {
+        return res.status(404).json({ error: 'Offer not found or already sold!' });
+    }
+
+    if (offer.sellerId === buyerId) {
+        return res.status(400).json({ error: 'You cannot buy your own offer!' });
+    }
+
+    // Verify buyer cash
+    let buyerCash = 0;
+    for (const server of Object.values(activeServers)) {
+        if (server.players && server.players[buyerId]) {
+            buyerCash = server.players[buyerId].cash;
+            break;
+        }
+    }
+
+    if (buyerCash < offer.price) {
+        return res.status(400).json({ error: `Not enough coins! You need ${offer.price} 🪙.` });
+    }
+
+    // Mark offer as SOLD
+    offer.status = 'SOLD';
+    if (mongoose.connection.readyState === 1) {
+        await MarketplaceOffer.updateOne({ offerId }, { status: 'SOLD' });
+    }
+
+    // Queue delivery action to Roblox server
+    const activeServerIds = Object.keys(activeServers);
+    if (activeServerIds.length > 0) {
+        const targetServerId = activeServerIds[0];
+        if (!actionQueues[targetServerId]) actionQueues[targetServerId] = [];
+        actionQueues[targetServerId].push({
+            actionId: 'mkt_deliver_' + Math.random().toString(36).substr(2, 9),
+            action: 'MARKETPLACE_DELIVER_SALE',
+            buyerId: buyerId,
+            sellerId: offer.sellerId,
+            items: offer.items,
+            price: offer.price,
+            sellerPayout: offer.sellerPayout
+        });
+    }
+
+    console.log(`[Marketplace] ${buyerName} bought offer ${offerId} from ${offer.sellerName} for ${offer.price} 🪙!`);
+    res.status(200).json({ success: true, message: 'Offer purchased successfully!' });
+});
+
+// 4. Cancel an offer
+app.post('/api/marketplace/cancelOffer', async (req, res) => {
+    const { userId, offerId } = req.body;
+    if (!userId || !offerId) return res.status(400).json({ error: 'Missing parameters' });
+
+    let offer = null;
+    if (mongoose.connection.readyState === 1) {
+        offer = await MarketplaceOffer.findOne({ offerId, sellerId: userId, status: 'ACTIVE' });
+    }
+    if (!offer) {
+        offer = inMemoryMarketplaceOffers.find(o => o.offerId === offerId && o.sellerId === userId && o.status === 'ACTIVE');
+    }
+
+    if (!offer) {
+        return res.status(404).json({ error: 'Active offer not found.' });
+    }
+
+    offer.status = 'CANCELLED';
+    if (mongoose.connection.readyState === 1) {
+        await MarketplaceOffer.updateOne({ offerId }, { status: 'CANCELLED' });
+    }
+
+    // Return items to seller
+    const activeServerIds = Object.keys(activeServers);
+    if (activeServerIds.length > 0) {
+        const targetServerId = activeServerIds[0];
+        if (!actionQueues[targetServerId]) actionQueues[targetServerId] = [];
+        actionQueues[targetServerId].push({
+            actionId: 'mkt_cancel_' + Math.random().toString(36).substr(2, 9),
+            action: 'MARKETPLACE_CANCEL_RETURN',
+            sellerId: userId,
+            items: offer.items
+        });
+    }
+
+    console.log(`[Marketplace] ${offer.sellerName} cancelled offer ${offerId}.`);
+    res.status(200).json({ success: true, message: 'Offer cancelled and items returned to your inventory.' });
 });
 
 // -------------------------
