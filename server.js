@@ -365,9 +365,21 @@ app.post('/api/marketplace/createOffer', async (req, res) => {
         return res.status(400).json({ error: 'Price must be greater than 0.' });
     }
 
-    // Calculate 5% fee and final listed price
+    // Calculate 5% fee (seller pays this fee upon creation)
     const fee = Math.ceil(payoutNum * 0.05);
-    const finalPrice = payoutNum + fee;
+    const finalPrice = payoutNum; // Other players buy for this exact price
+
+    // Validate seller has enough coins to pay 5% creation fee
+    let sellerCash = 0;
+    for (const server of Object.values(activeServers)) {
+        if (server.players && server.players[sellerId]) {
+            sellerCash = server.players[sellerId].cash || 0;
+            break;
+        }
+    }
+    if (sellerCash < fee) {
+        return res.status(400).json({ error: `You need at least ${fee} 🪙 to pay the 5% creation fee!` });
+    }
 
     // Validate inventory if player is in an active server
     let sellerInv = null;
@@ -425,7 +437,7 @@ app.post('/api/marketplace/createOffer', async (req, res) => {
         status: 'ACTIVE'
     };
 
-    // Queue deduction action for Roblox server
+    // Queue deduction action for Roblox server (items + 5% fee)
     const activeServerIds = Object.keys(activeServers);
     if (activeServerIds.length > 0) {
         const targetServerId = activeServerIds[0];
@@ -434,7 +446,8 @@ app.post('/api/marketplace/createOffer', async (req, res) => {
             actionId: 'mkt_deduct_' + Math.random().toString(36).substr(2, 9),
             action: 'MARKETPLACE_DEDUCT_ITEMS',
             userId: sellerId,
-            items: enrichedItems
+            items: enrichedItems,
+            fee: fee
         });
     }
 
@@ -448,7 +461,7 @@ app.post('/api/marketplace/createOffer', async (req, res) => {
     }
     inMemoryMarketplaceOffers.unshift(offerDoc);
 
-    console.log(`[Marketplace] ${sellerName} created offer ${offerId} with ${enrichedItems.length} items. Listed at ${finalPrice} 🪙 (Payout: ${payoutNum} 🪙).`);
+    console.log(`[Marketplace] ${sellerName} created offer ${offerId} with ${enrichedItems.length} items. Listed at ${finalPrice} 🪙 (Fee paid: ${fee} 🪙).`);
     res.status(200).json({ success: true, offer: offerDoc });
 });
 

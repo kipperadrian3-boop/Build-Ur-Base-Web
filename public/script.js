@@ -1278,17 +1278,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const payout = Math.max(0, parseInt(mktPayoutInput.value, 10) || 0);
         const hasItems = Object.keys(currentOfferBundle).length > 0;
+        const fee = Math.ceil(payout * 0.05);
 
         if (payout > 0) {
-            const fee = Math.ceil(payout * 0.05);
-            const finalPrice = payout + fee;
-            mktCreateBtn.textContent = `Create (${finalPrice.toLocaleString('de-DE')} 🪙)`;
+            const displayPrice = payout + fee;
+            mktCreateBtn.textContent = `Create (${displayPrice.toLocaleString('de-DE')})`;
         } else {
-            mktCreateBtn.textContent = 'Create (0 🪙)';
+            mktCreateBtn.textContent = 'Create (0)';
         }
 
         if (hasItems && payout > 0) {
-            mktCreateBtn.disabled = false;
+            if (playerCash < fee) {
+                mktCreateBtn.disabled = true;
+                mktCreateBtn.textContent = `Create (Need ${fee} Coins Fee)`;
+            } else {
+                mktCreateBtn.disabled = false;
+            }
         } else {
             mktCreateBtn.disabled = true;
         }
@@ -1316,6 +1321,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentUser) return;
             const payout = Math.max(0, parseInt(mktPayoutInput.value, 10) || 0);
             const bundleItems = Object.values(currentOfferBundle);
+            const fee = Math.ceil(payout * 0.05);
 
             if (bundleItems.length === 0) {
                 showMessage("Please select at least one item for your offer!", false);
@@ -1324,6 +1330,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (payout <= 0) {
                 showMessage("Please enter a valid price greater than 0!", false);
+                return;
+            }
+
+            if (playerCash < fee) {
+                showMessage(`You do not have enough coins to pay the 5% creation fee (${fee} coins)!`, false);
                 return;
             }
 
@@ -1346,7 +1357,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
 
                 if (data.success) {
-                    showMessage(`Offer created! Listed for ${data.offer.price.toLocaleString('de-DE')} 🪙 (Your payout: ${data.offer.sellerPayout.toLocaleString('de-DE')} 🪙).`, true);
+                    showMessage(`Offer created and listed for ${data.offer.price.toLocaleString('de-DE')} coins! 5% creation fee (${data.offer.fee} coins) was deducted from your balance.`, true);
                     currentOfferBundle = {};
                     mktPayoutInput.value = '';
                     closeCreateOfferModal();
