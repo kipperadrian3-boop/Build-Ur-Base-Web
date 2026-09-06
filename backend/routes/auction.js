@@ -233,6 +233,11 @@ router.post('/bid', async (req, res) => {
     const numBid = parseInt(bidAmount, 10);
     if (isNaN(numBid) || numBid <= 0) return res.status(400).json({ error: 'Invalid bid amount' });
 
+    // Spieler darf nicht gegen sich selbst bieten, wenn er bereits der Höchstbietende ist!
+    if (currentAuction.highestBidderId && String(currentAuction.highestBidderId) === String(userId)) {
+        return res.status(400).json({ error: "You are already the highest bidder!" });
+    }
+
     // Mindestgebot berechnen
     const baseBid = currentAuction.highestBidderId ? currentAuction.currentBid : currentAuction.startPrice;
     const minRequired = currentAuction.highestBidderId ? (baseBid + currentAuction.step) : baseBid;
@@ -240,19 +245,15 @@ router.post('/bid', async (req, res) => {
         return res.status(400).json({ error: `Bid too low. Min: ${minRequired.toLocaleString('de-DE')} 🪙.` });
     }
 
-    // Wenn derselbe Spieler sein Gebot erhöht, zahlt er nur die Differenz
-    const isSelfIncrease = (currentAuction.highestBidderId === String(userId));
-    const amountToDeduct = isSelfIncrease ? (numBid - currentAuction.currentBid) : numBid;
-
     const bidderData = await getRobloxPlayerData(userId);
-    if (bidderData.cash < amountToDeduct) {
-        return res.status(400).json({ error: `Not enough coins! You need ${amountToDeduct.toLocaleString('de-DE')} 🪙.` });
+    if (bidderData.cash < numBid) {
+        return res.status(400).json({ error: `Not enough coins! You need ${numBid.toLocaleString('de-DE')} 🪙.` });
     }
 
-    // 1. Geld SOFORT vom Bieter abziehen
-    await deductCoins(userId, amountToDeduct);
+    // 1. Geld SOFORT vom neuen Bieter abziehen
+    await deductCoins(userId, numBid);
 
-    // 2. Vorherigen Höchstbietenden (falls anderer Spieler) SOFORT VOLLSTÄNDIG zurückerstatten
+    // 2. Vorherigen Höchstbietenden SOFORT VOLLSTÄNDIG zurückerstatten
     const prevBidderId = currentAuction.highestBidderId;
     const prevBidAmount = currentAuction.currentBid;
     if (prevBidderId && prevBidderId !== String(userId) && prevBidAmount > 0) {
@@ -281,10 +282,10 @@ router.post('/bid', async (req, res) => {
         tracking.trackAuctionBid(userId, numBid, currentAuction.item);
     } catch (e) {}
 
-    console.log(`[Auction] ${username} bid ${numBid} 🪙! (Deducted: ${amountToDeduct} 🪙, Outbid refunded: ${prevBidderId ? prevBidAmount : 0} 🪙)`);
+    console.log(`[Auction] ${username} bid ${numBid} 🪙! (Deducted: ${numBid} 🪙, Outbid refunded: ${prevBidderId ? prevBidAmount : 0} 🪙)`);
     res.json({
         success: true,
-        message: `Bid placed! ${amountToDeduct.toLocaleString('de-DE')} 🪙 deducted.`,
+        message: `Bid placed! ${numBid.toLocaleString('de-DE')} 🪙 deducted.`,
         currentBid: numBid
     });
 });

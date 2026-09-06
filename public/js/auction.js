@@ -68,11 +68,12 @@
         if (auctionCurrentBid) auctionCurrentBid.textContent = `${data.currentBid || data.startPrice} 🪙`;
 
         const currentUser = window.APP.currentUser;
+        const isHighest = currentUser && data.highestBidderId && (String(data.highestBidderId) === String(currentUser.userId));
 
         if (auctionHighestBidder) {
             if (data.highestBidderId) {
-                auctionHighestBidder.textContent = data.highestBidderName;
-                if (currentUser && data.highestBidderId === currentUser.userId) {
+                auctionHighestBidder.textContent = data.highestBidderName || "Player";
+                if (isHighest) {
                     auctionHighestBidder.style.color = "#4caf50";
                 } else {
                     auctionHighestBidder.style.color = "#4a3b32";
@@ -90,14 +91,14 @@
         if (remaining <= 0) {
             auctionBidBtn.textContent = "Auction Ended";
             auctionBidBtn.disabled = true;
-        } else if (currentUser && data.highestBidderId === currentUser.userId) {
+        } else if (isHighest) {
             auctionBidBtn.textContent = "You are highest!";
             auctionBidBtn.disabled = true;
         } else if (window.APP.playerCash < nextRequiredBid) {
-            auctionBidBtn.textContent = `Bid ${nextRequiredBid} 🪙 (Not enough)`;
+            auctionBidBtn.textContent = `Bid ${nextRequiredBid.toLocaleString('de-DE')} 🪙 (Not enough)`;
             auctionBidBtn.disabled = true;
         } else {
-            auctionBidBtn.textContent = `Bid ${nextRequiredBid} 🪙`;
+            auctionBidBtn.textContent = `Bid ${nextRequiredBid.toLocaleString('de-DE')} 🪙`;
             auctionBidBtn.disabled = false;
         }
     }
@@ -107,6 +108,12 @@
             const lastState = window.APP.lastAuctionState;
             const currentUser = window.APP.currentUser;
             if (!lastState || !currentUser) return;
+
+            // Prevent bidding if already highest bidder
+            if (lastState.highestBidderId && String(lastState.highestBidderId) === String(currentUser.userId)) {
+                window.APP.showMessage("You are already the highest bidder!", false);
+                return;
+            }
 
             const bidAmount = (lastState.currentBid || lastState.startPrice) + lastState.step;
 
