@@ -1,0 +1,187 @@
+/* ==========================================================================
+   SELL & BUY MARKETPLACE STYLES
+   ========================================================================== */
+
+#marketplaceView {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding-bottom: 2rem;
+}
+
+.mkt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    border: 1px solid #f0e6d8;
+    box-shadow: 0 4px 12px rgba(110, 83, 60, 0.05);
+}
+
+.mkt-header h2 { font-size: 1.3rem; color: #4a3b32; margin: 0; }
+.mkt-subtitle { font-size: 0.85rem; color: #8c7361; margin: 0.2rem 0 0 0; }
+
+.mkt-refresh-btn {
+    background: #fdfaf6; border: 1px solid #e8dccf; color: #6b4c3a;
+    font-weight: 600; padding: 0.5rem 0.85rem; border-radius: 8px;
+    cursor: pointer; transition: all 0.2s; font-size: 0.85rem;
+}
+.mkt-refresh-btn:hover { background: #e8dccf; transform: translateY(-1px); }
+
+.mkt-section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: -0.5rem; }
+.mkt-section-title h3 { font-size: 1.15rem; color: #4a3b32; margin: 0; }
+.mkt-badge { background: #f5ede4; color: #8b5a2b; font-size: 0.8rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 12px; }
+
+.mkt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; width: 100%; }
+
+.mkt-card {
+    background: #ffffff; border: 1px solid #e8dccf; border-radius: 14px;
+    padding: 1rem; box-shadow: 0 4px 12px rgba(110, 83, 60, 0.06);
+    display: flex; flex-direction: column; justify-content: space-between;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.mkt-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(110, 83, 60, 0.12); }
+
+.mkt-card-seller { display: flex; align-items: center; gap: 0.6rem; padding-bottom: 0.6rem; border-bottom: 1px solid #f5ede4; margin-bottom: 0.75rem; }
+.mkt-seller-avatar { width: 32px; height: 32px; border-radius: 50%; background-color: #f0e6d8; background-size: cover; background-position: center; border: 1px solid #e8dccf; flex-shrink: 0; }
+.mkt-seller-info { display: flex; flex-direction: column; overflow: hidden; }
+.mkt-seller-name { font-size: 0.88rem; font-weight: 700; color: #4a3b32; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mkt-offer-time { font-size: 0.72rem; color: #a09080; }
+
+.mkt-card-items { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem; max-height: 66px; overflow-y: auto; overflow-x: hidden; margin-bottom: 0.85rem; padding-right: 0.15rem; }
+.mkt-card-items::-webkit-scrollbar { width: 4px; }
+.mkt-card-items::-webkit-scrollbar-track { background: #fdfaf6; border-radius: 4px; }
+.mkt-card-items::-webkit-scrollbar-thumb { background: #d9cbbe; border-radius: 4px; }
+.mkt-card-items::-webkit-scrollbar-thumb:hover { background: #bfa895; }
+
+.mkt-card-item-chip {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: #fdfbf7; border: 1.5px solid #ebdccb; border-radius: 8px; height: 60px;
+    padding: 0.25rem 0.2rem; box-sizing: border-box; transition: all 0.15s ease; cursor: pointer; user-select: none; overflow: hidden;
+}
+.mkt-card-item-chip:hover { border-color: #8b5a2b; transform: translateY(-1px); box-shadow: 0 3px 8px rgba(139, 90, 43, 0.15); }
+.mkt-card-item-chip img { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; }
+.mkt-chip-qty { font-size: 0.72rem; font-weight: 800; color: #8b5a2b; background: #fdf5ea; border: 1px solid #ebdccb; padding: 0.05rem 0.35rem; border-radius: 6px; margin-top: 0.15rem; line-height: 1; }
+
+.mkt-chip-name-hover {
+    position: absolute; inset: 0; background: rgba(45, 30, 20, 0.92); color: #ffffff;
+    font-size: 0.68rem; font-weight: 700; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 0.2rem; border-radius: 7px; opacity: 0; pointer-events: none;
+    transition: opacity 0.18s ease; line-height: 1.15; word-break: break-word;
+}
+.mkt-card-item-chip:hover .mkt-chip-name-hover { opacity: 1; }
+
+.mkt-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-top: 0.6rem; border-top: 1px solid #f5ede4; }
+.mkt-card-price { display: flex; flex-direction: column; }
+.mkt-price-label { font-size: 0.7rem; color: #8c7361; text-transform: uppercase; font-weight: 700; }
+.mkt-price-val { font-size: 1.05rem; font-weight: 800; color: #b8860b; }
+
+.mkt-buy-btn { background: #2e7d32; color: white; border: none; padding: 0.5rem 0.9rem; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
+.mkt-buy-btn:hover:not(:disabled) { background: #1b5e20; transform: translateY(-1px); }
+.mkt-buy-btn:disabled { background: #cccccc; cursor: not-allowed; }
+
+.mkt-cancel-btn { background: #d9534f; color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+.mkt-cancel-btn:hover { background: #c9302c; }
+
+.mkt-empty-grid { grid-column: 1 / -1; text-align: center; padding: 2.5rem 1rem; background: #ffffff; border-radius: 12px; border: 1px dashed #e0d0c0; color: #8c7361; font-weight: 600; }
+
+/* Bottom CTA */
+.mkt-bottom-action-bar { position: sticky; bottom: 75px; display: flex; justify-content: center; margin-top: 2rem; margin-bottom: 1rem; z-index: 50; pointer-events: none; }
+.mkt-open-modal-cta {
+    pointer-events: auto; background: linear-gradient(135deg, #8b5a2b, #6b431e); color: #ffffff;
+    font-size: 1.05rem; font-weight: 800; padding: 0.85rem 2.25rem; border-radius: 50px;
+    border: 2px solid #ffffff; box-shadow: 0 8px 24px rgba(139, 90, 43, 0.4);
+    cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 0.5rem;
+}
+.mkt-open-modal-cta:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 12px 30px rgba(139, 90, 43, 0.55); background: linear-gradient(135deg, #9c6734, #7d5229); }
+
+/* Create Offer Modal */
+.mkt-modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(30, 20, 15, 0.68); backdrop-filter: blur(8px); z-index: 9999;
+    display: flex; align-items: center; justify-content: center; padding: 1.25rem;
+    box-sizing: border-box; animation: mktFadeIn 0.2s ease-out;
+}
+.mkt-modal-overlay.hidden { display: none !important; }
+
+.mkt-modal-card {
+    background: #ffffff; border: 2px solid #e8dccf; border-radius: 20px;
+    padding: 1.75rem 2rem; box-shadow: 0 24px 60px rgba(50, 25, 10, 0.35);
+    max-width: 900px; width: 100%; max-height: 90vh; display: flex; flex-direction: column;
+    overflow: hidden; position: relative; animation: mktPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mkt-modal-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 0.85rem; border-bottom: 1.5px solid #f0e6d8; margin-bottom: 1.25rem; }
+.mkt-modal-header h3 { font-size: 1.45rem; color: #4a3b32; margin: 0; }
+.mkt-modal-header p { font-size: 0.88rem; color: #8c7361; margin: 0.25rem 0 0 0; }
+
+.mkt-modal-close-btn {
+    background: #fdf5ea; border: 1px solid #ebdccb; color: #8b5a2b;
+    width: 38px; height: 38px; border-radius: 50%; font-size: 1.15rem; font-weight: 800;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;
+}
+.mkt-modal-close-btn:hover { background: #ebdccb; color: #4a3b32; transform: scale(1.1); }
+
+.mkt-create-columns { display: grid; grid-template-columns: 1.15fr 1fr; gap: 1.5rem; margin: 0 0 1.25rem 0; flex: 1; min-height: 320px; overflow: hidden; }
+
+.mkt-window { background: #fdfbf8; border: 1.5px solid #f0e6d8; border-radius: 14px; padding: 1.15rem; display: flex; flex-direction: column; overflow: hidden; }
+.mkt-window-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; padding-bottom: 0.6rem; border-bottom: 1px solid #f0e6d8; }
+.mkt-window-title h4 { font-size: 1.05rem; font-weight: 700; color: #5c3c25; margin: 0; }
+.mkt-hint { font-size: 0.78rem; color: #8b5a2b; font-weight: 600; background: #fdf5ea; padding: 0.2rem 0.5rem; border-radius: 6px; }
+.mkt-clear-btn { background: #fdf0ee; border: 1px solid #fad2cf; color: #d9534f; font-size: 0.78rem; font-weight: 700; border-radius: 6px; cursor: pointer; padding: 0.25rem 0.6rem; transition: background 0.15s; }
+.mkt-clear-btn:hover { background: #fad2cf; }
+
+.mkt-inv-list, .mkt-bundle-list { flex: 1; max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; padding-right: 0.35rem; }
+
+.mkt-inv-item { display: flex; align-items: center; gap: 0.6rem; background: #ffffff; border: 1px solid #ebdccb; border-radius: 8px; padding: 0.5rem; cursor: pointer; transition: all 0.15s ease; user-select: none; }
+.mkt-inv-item:hover { border-color: #8b5a2b; transform: translateX(3px); box-shadow: 0 2px 8px rgba(139, 90, 43, 0.12); }
+.mkt-inv-item img { width: 34px; height: 34px; object-fit: contain; border-radius: 6px; background: #f7f2eb; }
+.mkt-inv-item-info { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.mkt-inv-item-name { font-size: 0.85rem; font-weight: 700; color: #4a3b32; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mkt-inv-item-cat { font-size: 0.72rem; color: #a09080; }
+.mkt-inv-item-count { font-size: 0.82rem; font-weight: 800; color: #8b5a2b; background: #fdf5ea; padding: 0.2rem 0.5rem; border-radius: 6px; border: 1px solid #ebdccb; }
+
+.mkt-bundle-item { display: flex; align-items: center; gap: 0.5rem; background: #ffffff; border: 1px solid #e0d0c0; border-radius: 8px; padding: 0.45rem 0.6rem; }
+.mkt-bundle-item img { width: 30px; height: 30px; object-fit: contain; border-radius: 4px; background: #f7f2eb; }
+.mkt-bundle-item-name { font-size: 0.82rem; font-weight: 700; color: #4a3b32; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.mkt-qty-controls { display: flex; align-items: center; gap: 0.35rem; }
+.mkt-qty-btn { width: 24px; height: 24px; border-radius: 4px; border: 1px solid #e8dccf; background: #fdfaf6; color: #6b4c3a; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s; }
+.mkt-qty-btn:hover { background: #e8dccf; }
+.mkt-bundle-qty { font-size: 0.85rem; font-weight: 800; color: #4a3b32; min-width: 18px; text-align: center; }
+.mkt-remove-item-btn { background: none; border: none; color: #d9534f; font-size: 1rem; font-weight: bold; cursor: pointer; padding: 0 0.2rem; }
+.mkt-empty-text { text-align: center; color: #a09080; font-size: 0.85rem; font-style: italic; padding: 2rem 0.5rem; }
+
+/* Action Bar */
+.mkt-action-bar { display: flex; align-items: flex-end; justify-content: space-between; gap: 1.5rem; padding-top: 1rem; border-top: 1px solid #f0e6d8; }
+.mkt-price-box { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; max-width: 320px; }
+.mkt-price-box label { font-size: 0.85rem; font-weight: 700; color: #6b4c3a; }
+.mkt-input-wrapper { position: relative; display: flex; align-items: center; }
+.mkt-input-wrapper input { width: 100%; padding: 0.75rem 2.2rem 0.75rem 0.85rem; border: 1.5px solid #d4c5b5; border-radius: 10px; font-size: 1rem; font-weight: 700; color: #4a3b32; outline: none; transition: border-color 0.2s; text-align: left; }
+.mkt-input-wrapper input::placeholder { color: #a08c7c; font-weight: 500; font-size: 0.95rem; }
+.mkt-input-wrapper input:focus { border-color: #8b5a2b; }
+.mkt-input-wrapper .coin-symbol { position: absolute; right: 0.75rem; font-size: 1.1rem; pointer-events: none; }
+.mkt-fee-hint { font-size: 0.75rem; color: #8c7361; font-style: italic; }
+
+.mkt-create-btn {
+    background: #8b5a2b; color: white; border: none; border-radius: 10px;
+    padding: 0.85rem 1.75rem; font-size: 1.05rem; font-weight: 800; cursor: pointer;
+    transition: all 0.2s; box-shadow: 0 4px 12px rgba(139, 90, 43, 0.2); white-space: nowrap;
+}
+.mkt-create-btn:hover:not(:disabled) { background: #6f4722; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(139, 90, 43, 0.3); }
+.mkt-create-btn:disabled { background: #cccccc; cursor: not-allowed; box-shadow: none; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .mkt-grid { grid-template-columns: repeat(2, 1fr); }
+    .mkt-create-columns { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+    .mkt-grid { grid-template-columns: 1fr; }
+    .mkt-action-bar { flex-direction: column; align-items: stretch; }
+    .mkt-price-box { max-width: 100%; }
+    .mkt-create-btn { width: 100%; text-align: center; }
+}

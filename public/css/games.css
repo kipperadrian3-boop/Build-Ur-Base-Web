@@ -1,0 +1,103 @@
+/* ==========================================================================
+   GAMES & MINESWEEPER STYLES
+   ========================================================================== */
+
+/* Games Selection Modal */
+.games-modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(30, 20, 15, 0.72); backdrop-filter: blur(10px); z-index: 10000;
+    display: flex; align-items: center; justify-content: center; padding: 1.25rem;
+    box-sizing: border-box; animation: mktFadeIn 0.2s ease-out;
+}
+.games-modal-overlay.hidden { display: none !important; }
+
+.games-modal-card {
+    background: #ffffff; border: 2px solid #e8dccf; border-radius: 20px;
+    padding: 1.75rem 2rem; box-shadow: 0 24px 60px rgba(50, 25, 10, 0.35);
+    max-width: 480px; width: 100%; max-height: 90vh; display: flex; flex-direction: column;
+    overflow: hidden; animation: mktPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.games-modal-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 1rem; border-bottom: 1.5px solid #f0e6d8; margin-bottom: 1.25rem; }
+.games-modal-header h3 { font-size: 1.4rem; color: #4a3b32; margin: 0; }
+.games-modal-header p { font-size: 0.85rem; color: #8c7361; margin: 0.2rem 0 0 0; }
+
+.games-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.85rem; overflow-y: auto; max-height: 420px; padding: 0.25rem; }
+
+.game-tile {
+    background: linear-gradient(145deg, #fdfbf7, #f5ede4); border: 2px solid #e8dccf;
+    border-radius: 14px; padding: 1.15rem 0.5rem; display: flex; flex-direction: column;
+    align-items: center; gap: 0.5rem; cursor: pointer; transition: all 0.25s ease;
+    user-select: none; position: relative; overflow: hidden;
+}
+.game-tile::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(139, 90, 43, 0.08), transparent); opacity: 0; transition: opacity 0.25s; border-radius: 12px; }
+.game-tile:hover::before { opacity: 1; }
+.game-tile:hover { border-color: #8b5a2b; transform: translateY(-3px) scale(1.03); box-shadow: 0 8px 24px rgba(139, 90, 43, 0.2); }
+.game-tile:active { transform: translateY(0) scale(0.97); }
+.game-tile.locked { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+
+.game-tile-icon { font-size: 2.2rem; line-height: 1; }
+.game-tile-name { font-size: 0.82rem; font-weight: 700; color: #4a3b32; text-align: center; }
+.game-tile-reward { font-size: 0.72rem; font-weight: 700; color: #2e7d32; background: #e8f5e9; padding: 0.15rem 0.45rem; border-radius: 6px; border: 1px solid #a5d6a7; }
+
+/* Minesweeper Modal */
+.ms-modal-card {
+    background: #ffffff; border: 2px solid #e8dccf; border-radius: 20px;
+    padding: 1.25rem 1.5rem; box-shadow: 0 24px 60px rgba(50, 25, 10, 0.35);
+    max-width: 460px; width: 100%; max-height: 95vh; display: flex; flex-direction: column;
+    overflow: hidden; animation: mktPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ms-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1.5px solid #f0e6d8; margin-bottom: 0.75rem; }
+.ms-back-btn { background: #fdf5ea; border: 1px solid #ebdccb; color: #8b5a2b; padding: 0.4rem 0.7rem; border-radius: 8px; font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+.ms-back-btn:hover { background: #ebdccb; color: #4a3b32; }
+.ms-title { font-size: 1.15rem; font-weight: 800; color: #4a3b32; }
+
+.ms-info-bar { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0; margin-bottom: 0.5rem; }
+.ms-stat { display: flex; flex-direction: column; align-items: center; background: #fcf9f5; border: 1px solid #f0e6d8; border-radius: 10px; padding: 0.4rem 0.75rem; flex: 1; }
+.ms-stat-label { font-size: 0.68rem; font-weight: 700; color: #8c7361; text-transform: uppercase; letter-spacing: 0.5px; }
+.ms-stat-value { font-size: 0.95rem; font-weight: 800; color: #4a3b32; }
+.ms-earned { color: #b8860b; }
+.ms-new-game-btn { background: #8b5a2b; color: white; border: none; padding: 0.55rem 0.9rem; border-radius: 8px; font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+.ms-new-game-btn:hover { background: #6f4722; transform: translateY(-1px); }
+
+/* Board */
+.ms-board-container { position: relative; display: flex; justify-content: center; padding: 0.5rem 0; }
+.ms-board { display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; background: #d4c5b5; border: 3px solid #c4b5a3; border-radius: 10px; padding: 3px; width: 100%; max-width: 378px; aspect-ratio: 1 / 1; }
+.ms-cell { background: linear-gradient(145deg, #e8dccf, #ddd0c0); border: 1px solid #c8b9a6; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: clamp(0.8rem, 3.5vw, 1.1rem); font-weight: 800; cursor: pointer; user-select: none; transition: all 0.1s ease; aspect-ratio: 1 / 1; line-height: 1; }
+.ms-cell:hover:not(.revealed):not(.game-over) { background: linear-gradient(145deg, #f0e6d8, #e8dccf); transform: scale(1.06); z-index: 2; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+.ms-cell:active:not(.revealed):not(.game-over) { transform: scale(0.93); }
+.ms-cell.revealed { background: #fdfaf6; border-color: #e8dccf; cursor: default; }
+.ms-cell.revealed.mine-hit { background: #ffcdd2; border-color: #ef9a9a; }
+.ms-cell.revealed.mine-show { background: #fce4ec; }
+.ms-cell.flagged { background: linear-gradient(145deg, #fff8e1, #ffecb3); border-color: #ffd54f; }
+
+/* Number colors */
+.ms-cell[data-num="1"] { color: #1976d2; }
+.ms-cell[data-num="2"] { color: #2e7d32; }
+.ms-cell[data-num="3"] { color: #d32f2f; }
+.ms-cell[data-num="4"] { color: #7b1fa2; }
+.ms-cell[data-num="5"] { color: #ff6f00; }
+.ms-cell[data-num="6"] { color: #00838f; }
+.ms-cell[data-num="7"] { color: #424242; }
+.ms-cell[data-num="8"] { color: #78909c; }
+
+/* Overlay */
+.ms-game-overlay { position: absolute; inset: 0; background: rgba(253, 250, 246, 0.88); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; border-radius: 10px; z-index: 10; animation: mktFadeIn 0.3s ease; }
+.ms-game-overlay.hidden { display: none !important; }
+.ms-overlay-content { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+.ms-overlay-icon { font-size: 3rem; line-height: 1; animation: msBounce 0.5s ease; }
+.ms-overlay-text { font-size: 1.5rem; font-weight: 800; color: #4a3b32; }
+.ms-overlay-sub { font-size: 0.9rem; color: #8c7361; font-weight: 600; }
+.ms-play-again-btn { background: #8b5a2b; color: white; border: none; padding: 0.65rem 1.5rem; border-radius: 10px; font-size: 0.95rem; font-weight: 700; cursor: pointer; margin-top: 0.5rem; transition: all 0.2s; box-shadow: 0 4px 12px rgba(139, 90, 43, 0.3); }
+.ms-play-again-btn:hover { background: #6f4722; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(139, 90, 43, 0.4); }
+
+/* Responsive */
+@media (max-width: 480px) {
+    .games-modal-card { padding: 1.25rem; }
+    .games-grid { gap: 0.6rem; }
+    .game-tile { padding: 0.85rem 0.35rem; }
+    .game-tile-icon { font-size: 1.75rem; }
+    .ms-modal-card { padding: 1rem; }
+    .ms-board { max-width: 320px; }
+}

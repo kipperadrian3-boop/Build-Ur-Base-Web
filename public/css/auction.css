@@ -1,0 +1,161 @@
+/* ==========================================================================
+   AUCTION VIEW STYLES
+   ========================================================================== */
+
+#auctionView:not(.hidden) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    padding: 0.75rem 1rem calc(75px + env(safe-area-inset-bottom, 0px)) 1rem;
+    gap: clamp(0.5rem, 1.8vh, 1rem);
+    justify-content: flex-start;
+}
+
+.auction-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    padding: 0.75rem 1.25rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(110, 83, 60, 0.05);
+    border: 1px solid #f0e6d8;
+    flex-shrink: 0;
+}
+
+.auction-header h2 {
+    font-size: 1.15rem;
+    color: #6b4c3a;
+}
+
+.auction-timer {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #d9534f;
+    background: #fcf9f5;
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid #f0e6d8;
+}
+
+.auction-card {
+    background: #ffffff;
+    border: 2px solid #e8dccf;
+    border-radius: 16px;
+    padding: clamp(1rem, 2.5vh, 1.5rem) 1.25rem;
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(110, 83, 60, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(0.35rem, 1.2vh, 0.75rem);
+    flex-shrink: 1;
+}
+
+.auction-img {
+    width: clamp(75px, 13vh, 110px);
+    height: clamp(75px, 13vh, 110px);
+    object-fit: contain;
+    background: #fdfaf6;
+    padding: 8px;
+    border-radius: 12px;
+    border: 1px solid #f0e6d8;
+}
+
+.auction-card h3 {
+    font-size: clamp(1.1rem, 2.2vh, 1.35rem);
+    color: #4a3b32;
+    margin-top: 0.2rem;
+}
+
+.auction-qty {
+    font-size: 0.95rem;
+    color: #8c7361;
+    font-weight: 600;
+}
+
+.auction-bid-info {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: clamp(0.2rem, 1vh, 0.5rem) 0;
+}
+
+.bid-box {
+    flex: 1;
+    background: #fcf9f5;
+    border: 1px solid #f0e6d8;
+    padding: 0.6rem 0.5rem;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.bid-label {
+    font-size: 0.75rem;
+    color: #8c7361;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+}
+
+.bid-amount {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #b8860b;
+}
+
+.bid-name {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #4a3b32;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.highest-bidder {
+    background: #fffdf9;
+    border-color: #b8860b;
+}
+
+.auction-btn {
+    width: 100%;
+    background: #b8860b;
+    color: white;
+    border: none;
+    padding: clamp(0.7rem, 1.8vh, 0.95rem);
+    border-radius: 10px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(184, 134, 11, 0.2);
+}
+
+.auction-btn:hover:not(:disabled) {
+    background: #daa520;
+    transform: translateY(-2px);
+}
+
+.auction-btn:disabled {
+    background: #e0e0e0;
+    color: #9e9e9e;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+@media (max-height: 520px) {
+    #auctionView:not(.hidden) {
+        overflow-y: auto;
+    }
+}

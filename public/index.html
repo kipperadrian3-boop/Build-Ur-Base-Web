@@ -1,10 +1,16 @@
-<!DOCTYPE string>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Build Ur Base - Login</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Build Ur Base - Dashboard</title>
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/shop.css">
+    <link rel="stylesheet" href="css/daily.css">
+    <link rel="stylesheet" href="css/auction.css">
+    <link rel="stylesheet" href="css/marketplace.css">
+    <link rel="stylesheet" href="css/games.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -36,6 +42,74 @@
             </div>
             <div class="status-indicator-container" style="display: none !important;">
                 <div id="serverStatus" class="status-indicator offline">Server: Offline</div>
+            </div>
+            <div class="header-right-actions">
+                <button id="gamesBtn" class="header-action-btn games-btn" title="Mini Games">🎮 Games</button>
+            </div>
+        </div>
+
+        <!-- Games Selection Modal -->
+        <div id="gamesModal" class="games-modal-overlay hidden">
+            <div class="games-modal-card">
+                <div class="games-modal-header">
+                    <div>
+                        <h3>🎮 Mini Games</h3>
+                        <p>Play games to earn coins!</p>
+                    </div>
+                    <button id="gamesCloseBtn" class="mkt-modal-close-btn" title="Close">✕</button>
+                </div>
+                <div class="games-grid" id="gamesGrid">
+                    <!-- Minesweeper -->
+                    <div class="game-tile" id="gameTileMinesweeper">
+                        <div class="game-tile-icon">💣</div>
+                        <div class="game-tile-name">Minesweeper</div>
+                        <div class="game-tile-reward">+100 🪙</div>
+                    </div>
+                    <!-- Locked slots -->
+                    <div class="game-tile locked"><div class="game-tile-icon">🔒</div><div class="game-tile-name">Coming Soon</div></div>
+                    <div class="game-tile locked"><div class="game-tile-icon">🔒</div><div class="game-tile-name">Coming Soon</div></div>
+                    <div class="game-tile locked"><div class="game-tile-icon">🔒</div><div class="game-tile-name">Coming Soon</div></div>
+                    <div class="game-tile locked"><div class="game-tile-icon">🔒</div><div class="game-tile-name">Coming Soon</div></div>
+                    <div class="game-tile locked"><div class="game-tile-icon">🔒</div><div class="game-tile-name">Coming Soon</div></div>
+                    <div class="game-tile locked"><div class="game-tile-icon">🔒</div><div class="game-tile-name">Coming Soon</div></div>
+                    <div class="game-tile locked"><div class="game-tile-icon">🔒</div><div class="game-tile-name">Coming Soon</div></div>
+                    <div class="game-tile locked"><div class="game-tile-icon">🔒</div><div class="game-tile-name">Coming Soon</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Minesweeper Game Modal -->
+        <div id="minesweeperModal" class="games-modal-overlay hidden">
+            <div class="ms-modal-card">
+                <div class="ms-header">
+                    <button id="msBackBtn" class="ms-back-btn" title="Back to Games">← Back</button>
+                    <div class="ms-title">💣 Minesweeper</div>
+                    <button id="msCloseBtn" class="mkt-modal-close-btn" title="Close">✕</button>
+                </div>
+                <div class="ms-info-bar">
+                    <div class="ms-stat">
+                        <span class="ms-stat-label">Mines</span>
+                        <span class="ms-stat-value" id="msMineCount">10</span>
+                    </div>
+                    <div class="ms-stat">
+                        <span class="ms-stat-label">Earned</span>
+                        <span class="ms-stat-value ms-earned" id="msEarnedCoins">0 / 1000 🪙</span>
+                    </div>
+                    <button id="msNewGameBtn" class="ms-new-game-btn">New Game</button>
+                </div>
+                <div class="ms-board-container">
+                    <div class="ms-board" id="msBoard">
+                        <!-- 9x9 cells injected by JS -->
+                    </div>
+                    <div class="ms-game-overlay hidden" id="msGameOverlay">
+                        <div class="ms-overlay-content">
+                            <div class="ms-overlay-icon" id="msOverlayIcon">💀</div>
+                            <div class="ms-overlay-text" id="msOverlayText">Game Over!</div>
+                            <div class="ms-overlay-sub" id="msOverlaySub">You hit a mine.</div>
+                            <button class="ms-play-again-btn" id="msPlayAgainBtn">Play Again</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -196,6 +270,15 @@
         </nav>
     </div>
     
-    <script src="script.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/sync.js"></script>
+    <script src="js/index.js"></script>
+    <script src="js/shop.js"></script>
+    <script src="js/daily.js"></script>
+    <script src="js/auction.js"></script>
+    <script src="js/marketplace.js"></script>
+    <script src="js/games.js"></script>
+    <script src="js/nav.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

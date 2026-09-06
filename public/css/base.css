@@ -1,0 +1,128 @@
+/* ==========================================================================
+   BASE STYLES - Reset, Body, Login, Animations, Globals
+   ========================================================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background-color: #fdfaf6; 
+    color: #4a3b32; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    background-image: radial-gradient(#e6d5c3 1px, transparent 1px);
+    background-size: 30px 30px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* LOGIN SCREEN */
+.login-container {
+    background: #ffffff;
+    padding: 3rem;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px -10px rgba(110, 83, 60, 0.15);
+    border: 1px solid #f0e6d8;
+    text-align: center;
+    width: 100%;
+    max-width: 450px;
+    animation: fadeIn 0.5s ease;
+}
+
+.logo h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #6b4c3a;
+    margin-bottom: 0.5rem;
+}
+
+.logo p {
+    color: #8c7361;
+    font-size: 0.95rem;
+    margin-bottom: 2.5rem;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+input {
+    background: #fcf9f5;
+    border: 2px solid #e8dccf;
+    padding: 1.2rem;
+    border-radius: 10px;
+    color: #4a3b32;
+    font-size: 1.1rem;
+    text-align: center;
+    letter-spacing: 2px;
+    outline: none;
+    font-weight: 600;
+}
+
+input:focus {
+    border-color: #a67c52;
+    box-shadow: 0 0 0 4px rgba(166, 124, 82, 0.1);
+    background: #ffffff;
+}
+
+button {
+    background: #8b5a2b;
+    color: #ffffff;
+    border: none;
+    padding: 1.2rem;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+button:hover {
+    background: #734a23;
+    transform: translateY(-2px);
+}
+
+.status-message {
+    margin-top: 1.2rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    height: 20px;
+    color: #d9534f;
+}
+
+.status-message.success {
+    color: #6b8e23;
+}
+
+/* ANIMATIONS */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mktFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes mktPopIn {
+    from { opacity: 0; transform: scale(0.92) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes msBounce {
+    0% { transform: scale(0.3); opacity: 0; }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); opacity: 1; }
+}
