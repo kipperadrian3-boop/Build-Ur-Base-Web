@@ -2,10 +2,9 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const state = require('../state');
-const { getRobloxPlayerData } = require('../opencloud');
+const { getRobloxPlayerData, saveRobloxPlayerData } = require('../opencloud');
 const PendingAuction = require('../models/PendingAuction');
-const Player = require('../models/Player');
-const ActivityLog = require('../models/ActivityLog');
+const ActiveAuction = require('../models/ActiveAuction');
 
 // Auction Config
 const auctionConfig = [
@@ -38,7 +37,67 @@ function getNext10MinuteMark() {
     return d.getTime();
 }
 
-function startNewAuction() {
+// Sofortiger Münzabzug beim Bieten (Live Roblox Server + Offline Open Cloud)
+async function deductCoins(userId, amount) {
+    if (!userId || amount <= 0) return;
+    const uid = String(userId);
+
+    // 1. Live Server Check
+    let onlineInServer = false;
+    for (const [sid, server] of Object.entries(state.activeServers)) {
+        if (server.players && server.players[uid]) {
+            server.players[uid].cash = Math.max(0, (server.players[uid].cash || 0) - amount);
+            onlineInServer = true;
+            if (!state.actionQueues[sid]) state.actionQueues[sid] = [];
+            state.actionQueues[sid].push({
+                actionId: 'auc_deduct_' + Math.random().toString(36).substr(2, 9),
+                action: 'AUCTION_BID_DEDUCT',
+                userId: uid,
+                amount: amount
+            });
+            break;
+        }
+    }
+
+    // 2. Open Cloud DataStore Update (wenn offline oder Fallback)
+    const pData = await getRobloxPlayerData(uid);
+    if (pData.raw) {
+        pData.raw.Coins = Math.max(0, (pData.raw.Coins || 0) - amount);
+        await saveRobloxPlayerData(uid, pData.raw);
+    }
+}
+
+// Sofortige Rückerstattung bei Überbietung (Live Roblox Server + Offline Open Cloud)
+async function refundCoins(userId, amount) {
+    if (!userId || amount <= 0) return;
+    const uid = String(userId);
+
+    // 1. Live Server Check
+    let onlineInServer = false;
+    for (const [sid, server] of Object.entries(state.activeServers)) {
+        if (server.players && server.players[uid]) {
+            server.players[uid].cash = (server.players[uid].cash || 0) + amount;
+            onlineInServer = true;
+            if (!state.actionQueues[sid]) state.actionQueues[sid] = [];
+            state.actionQueues[sid].push({
+                actionId: 'auc_refund_' + Math.random().toString(36).substr(2, 9),
+                action: 'AUCTION_BID_REFUND',
+                userId: uid,
+                amount: amount
+            });
+            break;
+        }
+    }
+
+    // 2. Open Cloud DataStore Update (wenn offline oder Fallback)
+    const pData = await getRobloxPlayerData(uid);
+    if (pData.raw) {
+        pData.raw.Coins = (pData.raw.Coins || 0) + amount;
+        await saveRobloxPlayerData(uid, pData.raw);
+    }
+}
+
+async function startNewAuction() {
     const config = auctionConfig[Math.floor(Math.random() * auctionConfig.length)];
     const qty = config.qty || 1;
     const gameConfigs = state.gameConfigs;
@@ -51,12 +110,35 @@ function startNewAuction() {
         imageUrl = itemInfo.imageUrl || "";
     }
 
+    const endTime = getNext10MinuteMark();
+
     currentAuction = {
         item: config.key, category: config.category, displayName, imageUrl,
         qty, startPrice: config.start, currentBid: config.start,
         highestBidderId: null, highestBidderName: null,
-        endTime: getNext10MinuteMark(), step: config.up
+        endTime, step: config.up
     };
+
+    if (mongoose.connection.readyState === 1) {
+        try {
+            await ActiveAuction.updateOne(
+                { auctionId: 'current' },
+                {
+                    $set: {
+                        itemKey: config.key,
+                        qty,
+                        currentBid: config.start,
+                        highestBidderId: null,
+                        endTime
+                    }
+                },
+                { upsert: true }
+            );
+        } catch (e) {
+            console.error('[Auction] Failed to persist new auction:', e.message);
+        }
+    }
+
     console.log(`[Auction] New: ${qty}x ${displayName}, Ends: ${new Date(currentAuction.endTime).toLocaleTimeString()}`);
 }
 
@@ -64,43 +146,64 @@ async function resolveAuction() {
     if (currentAuction.highestBidderId) {
         const userId = currentAuction.highestBidderId;
         const bid = currentAuction.currentBid;
-        let hasMoney = false;
 
-        for (const server of Object.values(state.activeServers)) {
-            if (server.players[userId] && server.players[userId].cash >= bid) {
-                hasMoney = true; break;
+        console.log(`[Auction] ${currentAuction.highestBidderName || userId} won ${currentAuction.qty}x ${currentAuction.item}! (Paid: ${bid} Coins)`);
+
+        // Da die Coins bereits direkt beim Bieten abgezogen wurden, beträgt der Restpreis beim Gewinnen 0 Coins!
+        const activeServerIds = Object.keys(state.activeServers);
+        if (activeServerIds.length > 0) {
+            const sid = activeServerIds[0];
+            if (!state.actionQueues[sid]) state.actionQueues[sid] = [];
+            state.actionQueues[sid].push({
+                actionId: 'auc_' + Math.random().toString(36).substr(2, 9),
+                action: 'AUCTION_WIN',
+                userId,
+                itemKey: currentAuction.item,
+                quantity: currentAuction.qty,
+                cost: 0 // Bereits beim Bieten bezahlt!
+            });
+        } else {
+            // Offline: Direkt über Open Cloud ins Inventar übertragen
+            let delivered = false;
+            try {
+                const winnerData = await getRobloxPlayerData(userId);
+                if (winnerData.raw) {
+                    winnerData.raw.Inventory = winnerData.raw.Inventory || {};
+                    winnerData.raw.Inventory[currentAuction.item] = (winnerData.raw.Inventory[currentAuction.item] || 0) + currentAuction.qty;
+                    await saveRobloxPlayerData(userId, winnerData.raw);
+                    delivered = true;
+                    console.log(`[Auction] Offline delivery: Added ${currentAuction.qty}x ${currentAuction.item} directly to ${userId}'s DataStore inventory.`);
+                }
+            } catch (ocErr) {
+                console.error('[Auction] Open Cloud delivery error:', ocErr);
+            }
+
+            if (!delivered && mongoose.connection.readyState === 1) {
+                try {
+                    await new PendingAuction({
+                        userId,
+                        itemKey: currentAuction.item,
+                        quantity: currentAuction.qty,
+                        cost: 0
+                    }).save();
+                } catch (err) {
+                    console.error("[Auction] Failed to save pending auction:", err);
+                }
             }
         }
 
-        if (hasMoney) {
-            console.log(`[Auction] ${currentAuction.highestBidderName} won ${currentAuction.qty}x ${currentAuction.item} for ${bid}!`);
-            const activeServerIds = Object.keys(state.activeServers);
-            if (activeServerIds.length > 0) {
-                const sid = activeServerIds[0];
-                if (!state.actionQueues[sid]) state.actionQueues[sid] = [];
-                state.actionQueues[sid].push({
-                    actionId: 'auc_' + Math.random().toString(36).substr(2, 9),
-                    action: 'AUCTION_WIN', userId, itemKey: currentAuction.item,
-                    quantity: currentAuction.qty, cost: bid
-                });
-            } else {
-                if (mongoose.connection.readyState === 1) {
-                    try {
-                        await new PendingAuction({ userId, itemKey: currentAuction.item, quantity: currentAuction.qty, cost: bid }).save();
-                    } catch (err) { console.error("[Auction] Failed to save pending:", err); }
-                }
-            }
-
-            // Track win
+        // Track win in MongoDB
+        try {
             const tracking = require('../tracking');
             tracking.trackAuctionWin(userId, bid, currentAuction.item, currentAuction.qty);
-        } else {
-            console.log(`[Auction] CANCELED! ${currentAuction.highestBidderName} didn't have ${bid} coins.`);
+        } catch (tErr) {
+            console.error('[Auction] Track win error:', tErr);
         }
     } else {
         console.log("[Auction] Ended with no bidders.");
     }
-    startNewAuction();
+
+    await startNewAuction();
 }
 
 // Start auction system
@@ -125,25 +228,65 @@ router.get('/status', (req, res) => {
 // Place bid
 router.post('/bid', async (req, res) => {
     const { userId, username, bidAmount } = req.body;
-    if (!userId || !bidAmount) return res.status(400).json({ error: 'Missing params' });
+    if (!userId || !bidAmount) return res.status(400).json({ error: 'Missing parameters' });
 
-    const baseBid = currentAuction.currentBid || currentAuction.startPrice;
-    const minRequired = baseBid + currentAuction.step;
-    if (bidAmount < minRequired) return res.status(400).json({ error: `Bid too low. Min: ${minRequired} 🪙.` });
+    const numBid = parseInt(bidAmount, 10);
+    if (isNaN(numBid) || numBid <= 0) return res.status(400).json({ error: 'Invalid bid amount' });
+
+    // Mindestgebot berechnen
+    const baseBid = currentAuction.highestBidderId ? currentAuction.currentBid : currentAuction.startPrice;
+    const minRequired = currentAuction.highestBidderId ? (baseBid + currentAuction.step) : baseBid;
+    if (numBid < minRequired) {
+        return res.status(400).json({ error: `Bid too low. Min: ${minRequired.toLocaleString('de-DE')} 🪙.` });
+    }
+
+    // Wenn derselbe Spieler sein Gebot erhöht, zahlt er nur die Differenz
+    const isSelfIncrease = (currentAuction.highestBidderId === String(userId));
+    const amountToDeduct = isSelfIncrease ? (numBid - currentAuction.currentBid) : numBid;
 
     const bidderData = await getRobloxPlayerData(userId);
-    if (bidderData.cash < bidAmount) return res.status(400).json({ error: 'Not enough coins!' });
+    if (bidderData.cash < amountToDeduct) {
+        return res.status(400).json({ error: `Not enough coins! You need ${amountToDeduct.toLocaleString('de-DE')} 🪙.` });
+    }
 
-    currentAuction.highestBidderId = userId;
+    // 1. Geld SOFORT vom Bieter abziehen
+    await deductCoins(userId, amountToDeduct);
+
+    // 2. Vorherigen Höchstbietenden (falls anderer Spieler) SOFORT VOLLSTÄNDIG zurückerstatten
+    const prevBidderId = currentAuction.highestBidderId;
+    const prevBidAmount = currentAuction.currentBid;
+    if (prevBidderId && prevBidderId !== String(userId) && prevBidAmount > 0) {
+        console.log(`[Auction] Outbid! Refunding ${prevBidAmount} 🪙 to user ${prevBidderId}`);
+        await refundCoins(prevBidderId, prevBidAmount);
+    }
+
+    // 3. Auktionsstatus aktualisieren
+    currentAuction.highestBidderId = String(userId);
     currentAuction.highestBidderName = username;
-    currentAuction.currentBid = bidAmount;
+    currentAuction.currentBid = numBid;
 
-    // Track bid
-    const tracking = require('../tracking');
-    tracking.trackAuctionBid(userId, bidAmount, currentAuction.item);
+    // In MongoDB persistieren
+    if (mongoose.connection.readyState === 1) {
+        try {
+            await ActiveAuction.updateOne(
+                { auctionId: 'current' },
+                { $set: { currentBid: numBid, highestBidderId: String(userId) } }
+            );
+        } catch (e) {}
+    }
 
-    console.log(`[Auction] ${username} bid ${bidAmount}!`);
-    res.json({ success: true, message: 'Bid placed successfully!' });
+    // 4. Tracking
+    try {
+        const tracking = require('../tracking');
+        tracking.trackAuctionBid(userId, numBid, currentAuction.item);
+    } catch (e) {}
+
+    console.log(`[Auction] ${username} bid ${numBid} 🪙! (Deducted: ${amountToDeduct} 🪙, Outbid refunded: ${prevBidderId ? prevBidAmount : 0} 🪙)`);
+    res.json({
+        success: true,
+        message: `Bid placed! ${amountToDeduct.toLocaleString('de-DE')} 🪙 deducted.`,
+        currentBid: numBid
+    });
 });
 
 module.exports = router;

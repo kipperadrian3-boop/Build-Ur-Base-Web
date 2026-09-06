@@ -126,8 +126,11 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    window.APP.showMessage("Bid placed successfully!", true);
+                    window.APP.showMessage(data.message || "Bid placed successfully!", true);
                     fetchAuctionStatus();
+                    if (window.APP.fetchStatus) {
+                        window.APP.fetchStatus(true);
+                    }
                 } else {
                     window.APP.showMessage(data.error || "Failed to place bid.", false);
                     auctionBidBtn.disabled = false;
