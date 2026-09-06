@@ -45,15 +45,8 @@ router.post('/buyItem', async (req, res) => {
                 delete state.actionResults[actionId];
 
                 // Track purchase
-                try {
-                    await Player.updateOne({ robloxUserId: String(userId) }, {
-                        $inc: { totalShopPurchases: qty, totalShopSpent: result.totalCost || 0 }
-                    });
-                    await ActivityLog.create({
-                        robloxUserId: String(userId), action: 'SHOP_PURCHASE',
-                        details: { itemKey, quantity: qty, method: 'live' }
-                    });
-                } catch (e) { console.error('[Shop] Track error:', e); }
+                const tracking = require('../tracking');
+                tracking.trackShopPurchase(userId, itemKey, '', qty, result.totalCost || 0);
 
                 if (result.success) return res.status(200).json(result);
                 else return res.status(400).json(result);
@@ -96,15 +89,8 @@ router.post('/buyItem', async (req, res) => {
     await saveOpenCloudStore('ItemShopPurchases_v5', `ISP_${userId}`, { e: epoch, p: purchases });
 
     // Track purchase
-    try {
-        await Player.updateOne({ robloxUserId: String(userId) }, {
-            $inc: { totalShopPurchases: qty, totalShopSpent: totalCost }
-        });
-        await ActivityLog.create({
-            robloxUserId: String(userId), action: 'SHOP_PURCHASE',
-            details: { itemKey, quantity: qty, totalCost, method: 'cloud' }
-        });
-    } catch (e) { console.error('[Shop] Track error:', e); }
+    const tracking = require('../tracking');
+    tracking.trackShopPurchase(userId, itemKey, '', qty, totalCost);
 
     const newStock = Math.max(0, availableStock - qty);
     console.log(`[Shop] Offline purchase: ${userId} bought ${qty}x ${itemKey} for ${totalCost}. Stock: ${newStock}`);

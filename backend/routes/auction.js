@@ -92,15 +92,8 @@ async function resolveAuction() {
             }
 
             // Track win
-            try {
-                await Player.updateOne({ robloxUserId: String(userId) }, {
-                    $inc: { totalAuctionWins: 1, totalAuctionSpent: bid }
-                });
-                await ActivityLog.create({
-                    robloxUserId: String(userId), action: 'AUCTION_WIN',
-                    details: { itemKey: currentAuction.item, quantity: currentAuction.qty, cost: bid }
-                });
-            } catch (e) { console.error('[Auction] Track error:', e); }
+            const tracking = require('../tracking');
+            tracking.trackAuctionWin(userId, bid, currentAuction.item, currentAuction.qty);
         } else {
             console.log(`[Auction] CANCELED! ${currentAuction.highestBidderName} didn't have ${bid} coins.`);
         }
@@ -146,13 +139,8 @@ router.post('/bid', async (req, res) => {
     currentAuction.currentBid = bidAmount;
 
     // Track bid
-    try {
-        await Player.updateOne({ robloxUserId: String(userId) }, { $inc: { totalAuctionBids: 1 } });
-        await ActivityLog.create({
-            robloxUserId: String(userId), action: 'AUCTION_BID',
-            details: { itemKey: currentAuction.item, bidAmount }
-        });
-    } catch (e) { console.error('[Auction] Track error:', e); }
+    const tracking = require('../tracking');
+    tracking.trackAuctionBid(userId, bidAmount, currentAuction.item);
 
     console.log(`[Auction] ${username} bid ${bidAmount}!`);
     res.json({ success: true, message: 'Bid placed successfully!' });

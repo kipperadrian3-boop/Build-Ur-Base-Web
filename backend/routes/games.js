@@ -70,14 +70,8 @@ router.post('/reward', async (req, res) => {
                 rewardDoc.updatedAt = new Date();
                 await rewardDoc.save();
 
-                await Player.updateOne({ robloxUserId: String(userId) }, {
-                    $inc: { totalGamesPlayed: 1, totalGamesWon: 1, totalGameCoinsEarned: actualReward }
-                }).catch(e => console.error('[Games] Player update error:', e));
-
-                await ActivityLog.create({
-                    robloxUserId: String(userId), action: 'GAME_WIN',
-                    details: { game, reward: actualReward, hourlyEarned: newEarned }
-                }).catch(e => console.error('[Games] ActivityLog error:', e));
+                const tracking = require('../tracking');
+                await tracking.trackGameResult(userId, true, actualReward);
             } catch (dbSaveErr) {
                 console.error('[Games] DB save error:', dbSaveErr);
                 addInMemoryEarned(userId, hourKey, actualReward);

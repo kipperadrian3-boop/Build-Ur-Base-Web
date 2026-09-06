@@ -22,7 +22,8 @@ router.post('/claimDailyReward', async (req, res) => {
 
                 // Track
                 try {
-                    await ActivityLog.create({ robloxUserId: String(userId), action: 'DAILY_CLAIM', details: { method: 'live', reward: result.reward } });
+                    const tracking = require('../tracking');
+                    tracking.trackDailyClaim(userId, result.streak || 1, result.coinsAwarded || 0);
                 } catch (e) {}
 
                 if (result.success) return res.status(200).json(result);
@@ -85,10 +86,8 @@ router.post('/claimDailyReward', async (req, res) => {
 
     // Track
     try {
-        await ActivityLog.create({
-            robloxUserId: String(userId), action: 'DAILY_CLAIM',
-            details: { streak: currentStreak, reward: rewardDesc, coinsAwarded, method: 'cloud' }
-        });
+        const tracking = require('../tracking');
+        tracking.trackDailyClaim(userId, data.Streak, coinsAwarded);
     } catch (e) { console.error('[Daily] Track error:', e); }
 
     console.log(`[Daily] Offline claim for ${userId}: Streak ${currentStreak} -> ${data.Streak}, Reward: ${rewardDesc}`);

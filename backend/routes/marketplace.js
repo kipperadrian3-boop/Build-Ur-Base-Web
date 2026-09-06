@@ -102,11 +102,8 @@ router.post('/createOffer', async (req, res) => {
 
     // Track
     try {
-        await Player.updateOne({ robloxUserId: String(sellerId) }, { $inc: { totalOffersCreated: 1 } });
-        await ActivityLog.create({
-            robloxUserId: String(sellerId), action: 'MARKETPLACE_CREATE',
-            details: { offerId, itemCount: enrichedItems.length, price: finalPrice, fee }
-        });
+        const tracking = require('../tracking');
+        tracking.trackMarketplaceCreate(sellerId, offerId, fee);
     } catch (e) { console.error('[Marketplace] Track error:', e); }
 
     console.log(`[Marketplace] ${sellerName} created ${offerId} at ${finalPrice} 🪙 (Fee: ${fee}).`);
@@ -155,16 +152,10 @@ router.post('/buyOffer', async (req, res) => {
         }
     }
 
-    // Track buyer
+    // Track
     try {
-        await Player.updateOne({ robloxUserId: String(buyerId) }, { $inc: { totalMarketplaceBought: 1, totalMarketplaceSpent: offer.price } });
-        await ActivityLog.create({ robloxUserId: String(buyerId), action: 'MARKETPLACE_BUY', details: { offerId, price: offer.price, sellerName: offer.sellerName } });
-    } catch (e) { console.error('[Marketplace] Track error:', e); }
-
-    // Track seller
-    try {
-        await Player.updateOne({ robloxUserId: String(offer.sellerId) }, { $inc: { totalOffersSold: 1, totalMarketplaceEarned: offer.sellerPayout } });
-        await ActivityLog.create({ robloxUserId: String(offer.sellerId), action: 'MARKETPLACE_SOLD', details: { offerId, payout: offer.sellerPayout, buyerName } });
+        const tracking = require('../tracking');
+        tracking.trackMarketplaceBuy(buyerId, offer.sellerId, offer.price, offerId);
     } catch (e) { console.error('[Marketplace] Track error:', e); }
 
     console.log(`[Marketplace] ${buyerName} bought ${offerId} for ${offer.price} 🪙!`);
@@ -204,8 +195,8 @@ router.post('/cancelOffer', async (req, res) => {
 
     // Track
     try {
-        await Player.updateOne({ robloxUserId: String(userId) }, { $inc: { totalOffersCancelled: 1 } });
-        await ActivityLog.create({ robloxUserId: String(userId), action: 'MARKETPLACE_CANCEL', details: { offerId } });
+        const tracking = require('../tracking');
+        tracking.trackMarketplaceCancel(userId, offerId);
     } catch (e) { console.error('[Marketplace] Track error:', e); }
 
     console.log(`[Marketplace] ${offer.sellerName} cancelled ${offerId}.`);

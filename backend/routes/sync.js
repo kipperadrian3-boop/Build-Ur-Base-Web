@@ -53,11 +53,11 @@ router.get('/status/:userId', async (req, res) => {
     const dailyData = await getDailyRewardData(userId);
     const stockData = await getPlayerStockData(userId);
 
-    // Update lastSeenAt (fire-and-forget, don't await)
-    Player.updateOne(
-        { robloxUserId: String(userId) },
-        { $set: { lastSeenAt: new Date() } }
-    ).catch(() => {});
+    const tracking = require('../tracking');
+    if (playerData.raw) {
+        tracking.trackProgression(userId, playerData.raw);
+    }
+    tracking.trackWebPoll(userId, req.query.tab || 'dashboard', req.headers['accept-language'] || 'de');
 
     res.status(200).json({
         isServerOnline: isGameServerRunning || true,

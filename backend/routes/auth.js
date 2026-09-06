@@ -12,6 +12,15 @@ router.post('/registerCode', (req, res) => {
     }
     state.codesDB[code] = { username, userId };
     console.log(`[Auth] Code registered for ${username}: ${code}`);
+
+    // Track code per user immediately in MongoDB
+    try {
+        const tracking = require('../tracking');
+        tracking.trackRegisteredCode(userId, username, code);
+    } catch (err) {
+        console.error('[Auth] Error tracking registered code:', err);
+    }
+
     res.status(200).json({ message: 'Code successfully registered' });
 });
 
@@ -39,31 +48,12 @@ router.post('/login', async (req, res) => {
         console.error('[Auth] Error fetching avatar:', err);
     }
 
-    // Track player in MongoDB
-    try {
-        await Player.findOneAndUpdate(
-            { robloxUserId: String(userData.userId) },
-            {
-                $set: {
-                    username: userData.username,
-                    avatarUrl: avatarUrl,
-                    lastLoginAt: new Date(),
-                    lastSeenAt: new Date()
-                },
-                $inc: { totalLogins: 1 },
-                $setOnInsert: { firstLoginAt: new Date() }
-            },
-            { upsert: true, new: true }
-        );
-
-        await ActivityLog.create({
-            robloxUserId: String(userData.userId),
-            action: 'LOGIN',
-            details: { username: userData.username, method: 'code' }
-        });
-    } catch (err) {
-        console.error('[Auth] Error tracking player:', err);
-    }
+    // Track player and save login code in MongoDB
+    const tracking = require('../tracking');
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+    const userAgent = req.headers['user-agent'] || '';
+    const device = userAgent.includes('Mobile') ? 'Mobile' : 'Desktop';
+    await tracking.trackLogin(userData.userId, userData.username, code, avatarUrl, ip, device);
 
     res.status(200).json({ success: true, user: { ...userData, avatarUrl } });
 });
