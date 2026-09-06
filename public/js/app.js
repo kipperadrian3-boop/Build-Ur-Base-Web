@@ -119,8 +119,8 @@
         });
     }
 
-    // Auto-login on DOMContentLoaded
-    document.addEventListener('DOMContentLoaded', () => {
+    // Auto-login initialization
+    function initApp() {
         const savedCode = localStorage.getItem('roblox_web_code');
         const savedUser = localStorage.getItem('roblox_web_user');
 
@@ -143,5 +143,11 @@
             if (codeInput) codeInput.value = savedCode;
             performLogin(savedCode);
         }
-    });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+        initApp();
+    }
 })();

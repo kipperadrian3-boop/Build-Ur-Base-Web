@@ -103,6 +103,20 @@
     let msFirstClick = true;
     let cachedHourlyEarned = 0;
 
+    function getHourlyStorageKey() {
+        const now = new Date();
+        const uid = (window.APP.currentUser && window.APP.currentUser.userId) ? window.APP.currentUser.userId : 'local';
+        return `ms_hourly_${uid}_${now.getFullYear()}_${now.getMonth()}_${now.getDate()}_${now.getHours()}`;
+    }
+
+    function getLocalHourlyEarned() {
+        return parseInt(localStorage.getItem(getHourlyStorageKey()) || '0', 10);
+    }
+
+    function setLocalHourlyEarned(val) {
+        localStorage.setItem(getHourlyStorageKey(), String(val));
+    }
+
     async function fetchServerHourlyEarned() {
         const currentUser = window.APP.currentUser;
         if (!currentUser || !currentUser.userId) return;
@@ -110,8 +124,11 @@
         try {
             const res = await fetch(`${window.APP.API_BASE}/api/games/hourly/${currentUser.userId}`);
             const data = await res.json();
-            cachedHourlyEarned = data.earned || 0;
-            updateEarnedDisplay();
+            if (typeof data.earned === 'number') {
+                cachedHourlyEarned = Math.max(cachedHourlyEarned, data.earned);
+                setLocalHourlyEarned(cachedHourlyEarned);
+                updateEarnedDisplay();
+            }
         } catch (err) {
             console.error('[Games] Error fetching hourly limit:', err);
         }
@@ -141,7 +158,12 @@
             }
         }
 
+        // Mines count is fixed (does not count down when placing flags)
         if (msMineCount) msMineCount.textContent = MS_MINES;
+
+        // Immediately show cached hourly earned and sync with server
+        cachedHourlyEarned = getLocalHourlyEarned();
+        updateEarnedDisplay();
         fetchServerHourlyEarned();
 
         if (msGameOverlay) msGameOverlay.classList.add('hidden');
@@ -276,13 +298,8 @@
     }
 
     function msUpdateMineCount() {
-        let flags = 0;
-        for (let r = 0; r < MS_ROWS; r++) {
-            for (let c = 0; c < MS_COLS; c++) {
-                if (msGrid[r][c].flagged) flags++;
-            }
-        }
-        if (msMineCount) msMineCount.textContent = MS_MINES - flags;
+        // Mine count is fixed at 10 and does not decrease when flags are placed
+        if (msMineCount) msMineCount.textContent = MS_MINES;
     }
 
     function msCheckWin() {
@@ -298,54 +315,69 @@
         if (unrevealedSafe === 0) {
             msGameOver = true;
             msGameWon = true;
-            msShowOverlay(true);
-            msAwardCoins();
+            const rewardGiven = msAwardCoins();
+            msShowOverlay(true, rewardGiven);
         }
     }
 
-    async function msAwardCoins() {
-        const currentUser = window.APP.currentUser;
-        if (!currentUser || !currentUser.userId) return;
+    function msAwardCoins() {
+        const available = Math.max(0, MS_MAX_HOURLY - cachedHourlyEarned);
+        if (available <= 0) {
+            updateEarnedDisplay();
+            return 0;
+        }
 
-        try {
-            const res = await fetch(`${window.APP.API_BASE}/api/games/reward`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: currentUser.userId,
-                    game: 'minesweeper',
-                    reward: MS_REWARD
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
+        const actualReward = Math.min(MS_REWARD, available);
+        cachedHourlyEarned += actualReward;
+        setLocalHourlyEarned(cachedHourlyEarned);
+        updateEarnedDisplay();
+
+        const currentUser = window.APP.currentUser;
+        if (!currentUser || !currentUser.userId) {
+            window.APP.showMessage(`+${actualReward} 🪙 from Minesweeper!`, true);
+            return actualReward;
+        }
+
+        // Notify server
+        fetch(`${window.APP.API_BASE}/api/games/reward`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: currentUser.userId,
+                game: 'minesweeper',
+                reward: actualReward
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && typeof data.earned === 'number') {
                 cachedHourlyEarned = data.earned;
+                setLocalHourlyEarned(cachedHourlyEarned);
                 updateEarnedDisplay();
                 window.APP.showMessage(`+${data.reward} 🪙 from Minesweeper!`, true);
                 if (window.APP.fetchLiveStatus) window.APP.fetchLiveStatus();
-            } else {
-                if (data.earned !== undefined) {
-                    cachedHourlyEarned = data.earned;
-                    updateEarnedDisplay();
-                }
-                window.APP.showMessage(data.error || 'Hourly limit reached.', false);
+            } else if (data.earned !== undefined) {
+                cachedHourlyEarned = data.earned;
+                setLocalHourlyEarned(cachedHourlyEarned);
+                updateEarnedDisplay();
             }
-        } catch (err) {
-            console.error('[Games] Reward error:', err);
-        }
+        })
+        .catch(err => console.error('[Games] Reward fetch error:', err));
+
+        return actualReward;
     }
 
-    function msShowOverlay(isWin) {
+    function msShowOverlay(isWin, rewardAmount) {
         if (!msGameOverlay) return;
         msGameOverlay.classList.remove('hidden');
 
         if (isWin) {
             msOverlayIcon.textContent = '🏆';
             msOverlayText.textContent = 'You Win!';
-            if (cachedHourlyEarned >= MS_MAX_HOURLY) {
+            if (rewardAmount === 0 || cachedHourlyEarned >= MS_MAX_HOURLY) {
                 msOverlaySub.textContent = `Hourly limit reached (${MS_MAX_HOURLY} 🪙). Try next hour!`;
             } else {
-                msOverlaySub.textContent = `+${MS_REWARD} 🪙 earned!`;
+                msOverlaySub.textContent = `+${rewardAmount || MS_REWARD} 🪙 earned!`;
             }
         } else {
             msOverlayIcon.textContent = '💀';

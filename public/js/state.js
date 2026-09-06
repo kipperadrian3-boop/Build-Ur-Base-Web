@@ -3,7 +3,7 @@
    ========================================================================== */
 
 (function () {
-    const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    const API_BASE = (window.location.port === '3000')
         ? ''
         : 'https://build-ur-base-web.onrender.com';
 
