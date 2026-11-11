@@ -69,7 +69,7 @@
             });
 
             // Initial state check
-            if (!window.APP.isServerOnline || stock === 0) {
+            if (!window.APP.isPlayerInGame || stock === 0) {
                 executeBtn.disabled = true;
             } else if (window.APP.playerCash < price) {
                 executeBtn.disabled = true;
@@ -81,8 +81,8 @@
     }
 
     async function buyItem(itemKey, btnElement, quantity = 1) {
-        if (!window.APP.isServerOnline) {
-            window.APP.showMessage("Sync is offline. Cannot purchase.", false);
+        if (!window.APP.isPlayerInGame) {
+            window.APP.showMessage("Join the game to buy items.", false);
             return;
         }
 

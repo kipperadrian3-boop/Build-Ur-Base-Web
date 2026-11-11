@@ -33,8 +33,13 @@ router.post('/buyItem', async (req, res) => {
     if (!userId || !itemKey) return res.status(400).json({ error: 'Missing params' });
     const qty = quantity || 1;
 
-    // 1. Live game server route
-    if (serverId && state.activeServers[serverId]) {
+    // 1. Live game server route (only the server the player is actually in)
+    const liveServerId = Object.keys(state.activeServers).find(id => {
+        const s = state.activeServers[id];
+        return s && s.players && s.players[String(userId)] && Date.now() - s.lastSeen < 10000;
+    });
+    if (liveServerId) {
+        const serverId = liveServerId;
         const actionId = 'act_' + Math.random().toString(36).substr(2, 9);
         if (!state.actionQueues[serverId]) state.actionQueues[serverId] = [];
         state.actionQueues[serverId].push({ actionId, action: 'BUY', userId, itemKey, quantity: qty });
@@ -59,48 +64,8 @@ router.post('/buyItem', async (req, res) => {
         return res.status(504).json({ success: false, message: 'Roblox server timed out' });
     }
 
-    // 2. Offline: Open Cloud
-    const gameConfigs = state.gameConfigs;
-    let itemConfig = null;
-    for (const cat in gameConfigs) {
-        if (gameConfigs[cat][itemKey]) { itemConfig = gameConfigs[cat][itemKey]; break; }
-    }
-    if (!itemConfig) return res.status(400).json({ error: 'Item not found in catalog' });
-    if (itemConfig.NotBuyable) return res.status(400).json({ success: false, message: 'This item cannot be bought.' });
-
-    const price = itemConfig.Price || 0;
-    const totalCost = price * qty;
-
-    const buyerData = await getRobloxPlayerData(userId);
-    if (buyerData.cash < totalCost) return res.status(400).json({ success: false, message: 'Not enough coins!' });
-
-    const stockMap = await getPlayerStockData(userId);
-    const availableStock = stockMap[itemKey] !== undefined ? stockMap[itemKey] : 0;
-    if (availableStock < qty) return res.status(400).json({ success: false, message: 'Out of stock!' });
-
-    if (buyerData.raw) {
-        buyerData.raw.Coins = Math.max(0, (buyerData.raw.Coins || 0) - totalCost);
-        buyerData.raw.Inventory = buyerData.raw.Inventory || {};
-        buyerData.raw.Inventory[itemKey] = (buyerData.raw.Inventory[itemKey] || 0) + qty;
-        await saveRobloxPlayerData(userId, buyerData.raw);
-    }
-
-    const epoch = getStockEpoch();
-    const purchases = await getOfflinePlayerPurchases(userId);
-    purchases[itemKey] = (purchases[itemKey] || 0) + qty;
-    await saveOpenCloudStore(DS.SHOP_PURCHASES, `ISP_${userId}`, { e: epoch, p: purchases });
-
-    // Track purchase
-    const tracking = require('../tracking');
-    tracking.trackShopPurchase(userId, itemKey, '', qty, totalCost);
-
-    const newStock = Math.max(0, availableStock - qty);
-    console.log(`[Shop] Offline purchase: ${userId} bought ${qty}x ${itemKey} for ${totalCost}. Stock: ${newStock}`);
-    return res.status(200).json({
-        success: true,
-        message: `Successfully bought ${qty}x ${itemConfig.DisplayName || itemKey}!`,
-        newStock
-    });
+    // 2. Not in the game: buying only works live (server-side checks in the game)
+    return res.status(400).json({ success: false, message: 'Join the game to buy items.' });
 });
 
 module.exports = router;

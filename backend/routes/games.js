@@ -86,6 +86,9 @@ router.post('/reward', async (req, res) => {
             if (playerData && playerData.raw) {
                 playerData.raw.Coins = (playerData.raw.Coins || 0) + actualReward;
                 await saveRobloxPlayerData(userId, playerData.raw);
+            } else if (playerData && playerData.isOnline) {
+                // in-game: the player's game server adds the coins live
+                await require('../snapshots').queueDelta(String(userId), { coins: actualReward });
             }
         } catch (ocErr) {
             console.error('[Games] OpenCloud award error:', ocErr);

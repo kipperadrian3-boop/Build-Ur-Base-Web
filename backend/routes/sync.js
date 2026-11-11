@@ -12,6 +12,7 @@ router.post('/serverSync', (req, res) => {
     const { serverId, players } = req.body;
     if (serverId && players) {
         state.activeServers[serverId] = { lastSeen: Date.now(), players };
+        require('../snapshots').updateFromHeartbeat(players);
         res.status(200).json({ message: 'Heartbeat received' });
     } else {
         res.status(400).json({ error: 'Invalid payload' });
@@ -110,6 +111,17 @@ router.get('/pollActions/:serverId', async (req, res) => {
         } catch (err) {
             console.error("[Sync] Error fetching pending auctions:", err);
         }
+    }
+
+    // Offline player changes that waited for a game server
+    try {
+        const pending = await require('../snapshots').takePendingActions();
+        if (pending.length > 0) {
+            console.log(`[Sync] Delivering ${pending.length} pending player changes to Server ${serverId}`);
+            actions.push(...pending);
+        }
+    } catch (err) {
+        console.error('[Sync] Error loading pending changes:', err);
     }
 
     res.status(200).json({ actions });

@@ -3,11 +3,10 @@
 //   POST /api/merge  { userId, itemKey, all }
 // - Player in a live game server: the action is queued for that server (WebSyncActions "MERGE")
 //   so the game applies it to the loaded data.
-// - Player offline: inventory is updated directly in the DataStore via Open Cloud.
+// - Player not in the game: refused (merging only works live, the game validates everything).
 const express = require('express');
 const router = express.Router();
 const state = require('../state');
-const { getRobloxPlayerData, saveRobloxPlayerData } = require('../opencloud');
 
 const MERGE_COST = 2;
 const LIVE_TIMEOUT_MS = 15000;
@@ -44,24 +43,6 @@ async function mergeLive(serverId, userId, itemKey, all) {
     return { success: false, message: 'Roblox server timed out' };
 }
 
-async function mergeOffline(userId, itemKey, nextId, all) {
-    const data = await getRobloxPlayerData(userId);
-    if (!data.raw) return { success: false, message: 'Could not load your data. Try again.' };
-
-    const inv = data.raw.Inventory || {};
-    const owned = Number(inv[itemKey]) || 0;
-    if (owned < MERGE_COST) return { success: false, message: `You need ${MERGE_COST} in your inventory` };
-
-    const times = all ? Math.floor(owned / MERGE_COST) : 1;
-    inv[itemKey] = owned - MERGE_COST * times;
-    inv[nextId] = (Number(inv[nextId]) || 0) + times;
-    data.raw.Inventory = inv;
-
-    const ok = await saveRobloxPlayerData(userId, data.raw);
-    if (!ok) return { success: false, message: 'Saving failed. Try again.' };
-    return { success: true, count: times };
-}
-
 router.post('/merge', async (req, res) => {
     const userId = req.body && req.body.userId ? String(req.body.userId) : '';
     const itemKey = req.body && typeof req.body.itemKey === 'string' ? req.body.itemKey : '';
@@ -78,9 +59,9 @@ router.post('/merge', async (req, res) => {
     try {
         const nextCfg = findDefense(cfg.NextId);
         const serverId = findLiveServer(userId);
-        const result = serverId
-            ? await mergeLive(serverId, userId, itemKey, all)
-            : await mergeOffline(userId, itemKey, cfg.NextId, all);
+        // Only live: the game checks the inventory itself (no offline writes)
+        if (!serverId) return res.status(400).json({ success: false, message: 'Join the game to merge.' });
+        const result = await mergeLive(serverId, userId, itemKey, all);
 
         if (result.success) {
             const count = result.count || 1;

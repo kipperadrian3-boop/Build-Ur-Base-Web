@@ -2,6 +2,7 @@
 const crypto = require('crypto');
 const state = require('./state');
 const DS = require('./datastores');
+const snapshots = require('./snapshots');
 
 const ROBLOX_OPENCLOUD_API_KEY = process.env.ROBLOX_OPENCLOUD_API_KEY || "9I06qJ0uGUWTIbGfl3TCupVrdm0pBy+7aVIEPkpYy9HHILbGZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNkluTnBaeTB5TURJeExUQTNMVEV6VkRFNE9qVXhPalE1V2lJc0luUjVjQ0k2SWtwWFZDSjkuZXlKaGRXUWlPaUpTYjJKc2IzaEpiblJsY201aGJDSXNJbWx6Y3lJNklrTnNiM1ZrUVhWMGFHVnVkR2xqWVhScGIyNVRaWEoyYVdObElpd2lZbUZ6WlVGd2FVdGxlU0k2SWpsSk1EWnhTakIxUjFWWFZFbGlSMlpzTTFSRGRYQldjbVJ0TUhCQ2VTczNZVlpKUlZCcmNGbDVPVWhJU1V4aVJ5SXNJbTkzYm1WeVNXUWlPaUl4TURVek1ETTRNRFV4T0NJc0ltVjRjQ0k2TVRjNE9EWTBNek0wTlN3aWFXRjBJam94TnpnNE5qTTVOelExTENKdVltWWlPakUzT0RnMk16azNORFY5LmwzTDFiTENtbTBGOGMxdWFQcjVBQzNFSWNacHZrZzlKOVh2OC1abmR2bXBFQVRzbW9EcDZtdDk1UndUb3hNbm42YlRCYVdYNjF3M2dqV3pKN1kzdllQVF9fNUZxS2hqUXgyM3FHcnhpaHItTC05WkRTZExscUctTm1QTWV2S3E4M3d5RmFkNmF6eWJBb1V2V2tzYTJLNHRYZzNjQm1jNWNYS3ptYnlHTlg3VWhwdVItOG03VUZQbG9DSV92ZTNEODFFcHh4Q3c3UHowOHBGNEthcXFsWHpaQ0hhTzBmWGp5OEN1VWxsMjliYVpIajAyN3kxNjZvSG1HcEdFaVdoRnlfWFRxNUJyamdNSVJqWmZtODJmSmsxLUNOS2VfVDBuSlFQX241YVpVTXllNExPRE1ndUpZLTRNa0JKdVBULVZQVlpfWG43b3hqRGJ4SC1OR2dBakNCUQ==";
 const ROBLOX_UNIVERSE_ID = process.env.ROBLOX_UNIVERSE_ID || "10216403339";
@@ -29,7 +30,20 @@ async function getRobloxPlayerData(userId) {
         }
     }
 
-    // 2. Memory cache (15s TTL)
+    // 2. Last snapshot sent by the game (works without an Open Cloud key)
+    const snap = await snapshots.getSnapshot(String(userId));
+    if (snap) {
+        return {
+            isOnline: false,
+            cash: snap.cash || 0,
+            stock: {},
+            inventory: snap.inventory || {},
+            dailyReward: snap.dailyReward || null,
+            raw: await snapshots.getRaw(String(userId))
+        };
+    }
+
+    // 3. Memory cache (15s TTL)
     const cached = offlinePlayerCache[userId];
     if (cached && (Date.now() - cached.timestamp < 15000)) {
         return {
@@ -53,6 +67,7 @@ async function getRobloxPlayerData(userId) {
         if (res.ok) {
             const rawData = await res.json();
             offlinePlayerCache[userId] = { data: rawData, timestamp: Date.now() };
+            snapshots.seedFromRaw(String(userId), rawData);
             console.log(`[OpenCloud] Fetched DataStore for ${userId}: ${rawData.Coins} Coins, ${Object.keys(rawData.Inventory || {}).length} inv items`);
             return {
                 isOnline: false,
@@ -109,12 +124,14 @@ async function saveOpenCloudStore(datastoreName, entryKey, data) {
     }
 }
 
-async function saveRobloxPlayerData(userId, rawData) {
+// Offline changes go to the game as a delta (see snapshots.js) instead of Open Cloud.
+// extra.purchases = { itemKey: qty } marks shop purchases for the stock system.
+async function saveRobloxPlayerData(userId, rawData, extra = {}) {
     if (!userId || !rawData) return false;
-    const ok = await saveOpenCloudStore(DS.PLAYER_DATA, `Player_${userId}`, rawData);
+    const ok = await snapshots.saveRaw(String(userId), rawData, extra);
     if (ok) {
-        offlinePlayerCache[userId] = { data: rawData, timestamp: Date.now() };
-        console.log(`[OpenCloud] Saved DataStore for Player_${userId}`);
+        delete offlinePlayerCache[userId];
+        console.log(`[Sync] Queued offline change for Player_${userId}`);
     }
     return ok;
 }
@@ -131,7 +148,11 @@ async function getDailyRewardData(userId) {
         }
     }
 
-    // 2. Memory cache (10s TTL)
+    // 2. Last snapshot sent by the game
+    const snap = await snapshots.getSnapshot(String(userId));
+    if (snap && snap.dailyReward) return snap.dailyReward;
+
+    // 3. Memory cache (10s TTL)
     const cached = offlineDailyCache[userId];
     if (cached && (Date.now() - cached.timestamp < 10000)) {
         const data = cached.data;

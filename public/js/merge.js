@@ -72,7 +72,13 @@
             });
     }
 
+    function updateJoinHint() {
+        const hint = document.getElementById('mergeJoinHint');
+        if (hint) hint.classList.toggle('hidden', !!window.APP.isPlayerInGame);
+    }
+
     function updateBadge() {
+        updateJoinHint();
         if (!badge) return;
         const n = getEntries().filter(e => e.count >= MERGE_COST).length;
         badge.textContent = n;
@@ -132,8 +138,11 @@
                     <span class="merge-stat-new">${fmt(next[s.key])}${s.suffix}</span>
                 </div>`).join('');
 
-        oneBtn.disabled = merging || times < 1;
-        allBtn.disabled = merging || times < 1;
+        const inGame = !!window.APP.isPlayerInGame;
+        oneBtn.disabled = merging || times < 1 || !inGame;
+        allBtn.disabled = merging || times < 1 || !inGame;
+        if (!inGame && !merging && !statusEl.classList.contains('ok')) statusEl.textContent = 'Join the game to merge.';
+        else if (inGame && statusEl.textContent === 'Join the game to merge.') statusEl.textContent = '';
         allBtn.textContent = times > 1 ? `Merge All (${times}x)` : 'Merge All';
     }
 

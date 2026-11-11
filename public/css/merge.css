@@ -115,3 +115,11 @@
     .merge-slot img { width: 62px; height: 62px; }
     .merge-op { font-size: 1.1rem; }
 }
+
+/* "Join the game" hint (shop + merge are live-only) */
+.join-hint {
+    background: #fdf5ea; border: 1px solid #ebdccb; color: #8b5a2b;
+    border-radius: 10px; padding: 0.6rem 0.8rem; margin: 0 0 0.75rem 0;
+    font-size: 0.85rem; font-weight: 600; text-align: center;
+}
+.merge-list-view .join-hint { margin: 0.6rem 0 0 0; }

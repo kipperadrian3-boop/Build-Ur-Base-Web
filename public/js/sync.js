@@ -31,6 +31,7 @@
             const data = await res.json();
 
             window.APP.isServerOnline = data.isServerOnline;
+            window.APP.isPlayerInGame = !!data.isPlayerInGame;
             window.APP.currentServerId = data.currentServerId;
             window.APP.playerStock = data.playerStock || {};
             window.APP.playerCash = data.playerCash || 0;
@@ -69,6 +70,10 @@
 
             // Merge Forge: badge + open list follow the live inventory
             if (window.APP.renderMergeList) window.APP.renderMergeList();
+
+            // Shop hint: buying only works while in the game
+            const shopHint = document.getElementById('shopJoinHint');
+            if (shopHint) shopHint.classList.toggle('hidden', window.APP.isPlayerInGame);
 
             // Update shop item stock in place if visible
             if (shopView && !shopView.classList.contains('hidden')) {
@@ -112,7 +117,7 @@
                 const qty = parseInt(actionsDiv ? actionsDiv.getAttribute('data-selected-qty') : 1, 10) || 1;
                 const totalCost = price * qty;
 
-                if (!window.APP.isServerOnline) {
+                if (!window.APP.isPlayerInGame) {
                     buyBtn.disabled = true;
                 } else if (stock === 0) {
                     buyBtn.disabled = true;

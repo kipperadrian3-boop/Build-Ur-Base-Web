@@ -38,8 +38,14 @@ async function getPlayerStockData(userId) {
         }
     }
 
-    // 2. Offline deterministic stock calculation
+    // 2. Stock from the last game snapshot (same 5-minute cycle)
     const epoch = getStockEpoch();
+    const snap = await require('./snapshots').getSnapshot(String(userId));
+    if (snap && snap.stockEpoch === epoch && snap.stock && Object.keys(snap.stock).length > 0) {
+        return snap.stock;
+    }
+
+    // 3. Offline deterministic stock calculation
     const purchases = await getOfflinePlayerPurchases(userId);
     const stockMap = {};
     const gameConfigs = state.gameConfigs;
