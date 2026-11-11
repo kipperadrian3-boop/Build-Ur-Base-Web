@@ -38,12 +38,18 @@ try {
 // Item images: point every item at the thumbnail proxy (/api/thumb/:assetId).
 // The proxy resolves fresh Roblox CDN links on demand, so images never go stale.
 function fetchThumbnails() {
+    const ids = [];
     for (const cat in state.gameConfigs) {
         for (const key in state.gameConfigs[cat]) {
             const item = state.gameConfigs[cat][key];
-            if (item.ImageId) item.imageUrl = `/api/thumb/${item.ImageId}`;
+            if (item.ImageId) {
+                item.imageUrl = `/api/thumb/${item.ImageId}`;
+                ids.push(item.ImageId);
+            }
         }
     }
+    // One batched Roblox request for all item images (avoids rate limits)
+    require('./backend/routes/thumbs').prewarmAssets(ids);
     console.log("[Backend] Item image URLs mapped to thumbnail proxy.");
 }
 
