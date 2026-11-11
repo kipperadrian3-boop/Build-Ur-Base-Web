@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const state = require('../state');
+const DS = require('../datastores');
 const { getRobloxPlayerData, saveRobloxPlayerData, saveOpenCloudStore, getOfflinePlayerPurchases } = require('../opencloud');
 const { getStockEpoch, calculateItemStock, getPlayerStockData } = require('../stock');
 const Player = require('../models/Player');
@@ -15,7 +16,7 @@ router.get('/globalStock', (req, res) => {
     for (const cat in gameConfigs) {
         for (const itemKey in gameConfigs[cat]) {
             const itemConf = gameConfigs[cat][itemKey];
-            stockMap[itemKey] = calculateItemStock(itemKey, epoch, itemConf.StockPercent || 50, itemConf.StockMax || 5);
+            stockMap[itemKey] = (itemConf.NotBuyable ? 0 : calculateItemStock(itemKey, epoch, itemConf.StockPercent ?? 50, itemConf.StockMax ?? 5));
         }
     }
 
@@ -65,6 +66,7 @@ router.post('/buyItem', async (req, res) => {
         if (gameConfigs[cat][itemKey]) { itemConfig = gameConfigs[cat][itemKey]; break; }
     }
     if (!itemConfig) return res.status(400).json({ error: 'Item not found in catalog' });
+    if (itemConfig.NotBuyable) return res.status(400).json({ success: false, message: 'This item cannot be bought.' });
 
     const price = itemConfig.Price || 0;
     const totalCost = price * qty;
@@ -86,7 +88,7 @@ router.post('/buyItem', async (req, res) => {
     const epoch = getStockEpoch();
     const purchases = await getOfflinePlayerPurchases(userId);
     purchases[itemKey] = (purchases[itemKey] || 0) + qty;
-    await saveOpenCloudStore('ItemShopPurchases_v5', `ISP_${userId}`, { e: epoch, p: purchases });
+    await saveOpenCloudStore(DS.SHOP_PURCHASES, `ISP_${userId}`, { e: epoch, p: purchases });
 
     // Track purchase
     const tracking = require('../tracking');

@@ -21,6 +21,13 @@
     // Expose showMessage globally
     window.APP.showMessage = showMessage;
 
+    // Avatar always via the thumbnail proxy (stored CDN links expire after a while)
+    function applyAvatar(user) {
+        if (!user || !user.userId) return;
+        user.avatarUrl = window.APP.assetUrl(`/api/avatar/${user.userId}`);
+        if (avatarPlaceholder) avatarPlaceholder.style.backgroundImage = `url('${user.avatarUrl}')`;
+    }
+
     // Formatting Code Input (XXXX-XXXX-XXXX-XXXX)
     if (codeInput) {
         codeInput.addEventListener('input', (e) => {
@@ -56,6 +63,7 @@
                     avatarUrl: data.user.avatarUrl,
                     userId: data.user.userId
                 };
+                applyAvatar(window.APP.currentUser);
                 localStorage.setItem('roblox_web_code', code);
                 localStorage.setItem('roblox_web_user', JSON.stringify(window.APP.currentUser));
 
@@ -64,9 +72,7 @@
                 mainAppView.classList.remove('hidden');
 
                 if (playerNameSpan) playerNameSpan.textContent = window.APP.currentUser.username;
-                if (avatarPlaceholder && window.APP.currentUser.avatarUrl) {
-                    avatarPlaceholder.style.backgroundImage = `url('${window.APP.currentUser.avatarUrl}')`;
-                }
+                applyAvatar(window.APP.currentUser);
 
                 // Initialize subsystems
                 if (window.APP.loadGameConfigs) window.APP.loadGameConfigs();
@@ -132,9 +138,7 @@
             mainAppView.classList.remove('hidden');
 
             if (playerNameSpan) playerNameSpan.textContent = window.APP.currentUser.username;
-            if (avatarPlaceholder && window.APP.currentUser.avatarUrl) {
-                avatarPlaceholder.style.backgroundImage = `url('${window.APP.currentUser.avatarUrl}')`;
-            }
+            applyAvatar(window.APP.currentUser);
 
             if (window.APP.loadGameConfigs) window.APP.loadGameConfigs();
             if (window.APP.startLiveSync) window.APP.startLiveSync();

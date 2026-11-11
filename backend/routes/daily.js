@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const state = require('../state');
+const DS = require('../datastores');
 const { getRobloxPlayerData, saveRobloxPlayerData, saveOpenCloudStore, clearDailyCache, ROBLOX_OPENCLOUD_API_KEY, ROBLOX_UNIVERSE_ID } = require('../opencloud');
 const ActivityLog = require('../models/ActivityLog');
 
@@ -40,11 +41,11 @@ router.post('/claimDailyReward', async (req, res) => {
     const entryKey = `Player_${userId}`;
     let data = { Streak: 1, LastClaimTime: 0, HasThreeSpeed: false };
     try {
-        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=DailyRewardsStore_v2&entryKey=${encodeURIComponent(entryKey)}`;
+        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=${DS.DAILY_REWARDS}&entryKey=${encodeURIComponent(entryKey)}`;
         const resDs = await fetch(url, { headers: { 'x-api-key': ROBLOX_OPENCLOUD_API_KEY } });
         if (resDs.ok) data = await resDs.json();
     } catch (e) {
-        console.error('[Daily] Error fetching DailyRewardsStore_v2:', e);
+        console.error('[Daily] Error fetching daily rewards store:', e);
     }
 
     const now = Math.floor(Date.now() / 1000);
@@ -73,7 +74,7 @@ router.post('/claimDailyReward', async (req, res) => {
     data.LastClaimTime = now;
     data.Streak = currentStreak < 7 ? currentStreak + 1 : 8;
 
-    await saveOpenCloudStore("DailyRewardsStore_v2", entryKey, data);
+    await saveOpenCloudStore(DS.DAILY_REWARDS, entryKey, data);
     clearDailyCache(userId);
 
     if (coinsAwarded > 0) {

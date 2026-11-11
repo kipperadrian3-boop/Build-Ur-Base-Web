@@ -35,37 +35,22 @@ try {
     console.error("[Backend] Could not load configs.json", e);
 }
 
-// Fetch Roblox Thumbnails
-async function fetchThumbnails() {
-    let assetIds = [];
+// Item images: point every item at the thumbnail proxy (/api/thumb/:assetId).
+// The proxy resolves fresh Roblox CDN links on demand, so images never go stale.
+function fetchThumbnails() {
     for (const cat in state.gameConfigs) {
         for (const key in state.gameConfigs[cat]) {
-            if (state.gameConfigs[cat][key].ImageId) assetIds.push(state.gameConfigs[cat][key].ImageId);
+            const item = state.gameConfigs[cat][key];
+            if (item.ImageId) item.imageUrl = `/api/thumb/${item.ImageId}`;
         }
     }
-    if (assetIds.length === 0) return;
-
-    try {
-        const res = await fetch(`https://thumbnails.roblox.com/v1/assets?assetIds=${assetIds.join(',')}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false`);
-        const json = await res.json();
-        if (json && json.data) {
-            const imageMap = {};
-            json.data.forEach(item => { imageMap[item.targetId.toString()] = item.imageUrl; });
-            for (const cat in state.gameConfigs) {
-                for (const key in state.gameConfigs[cat]) {
-                    const id = state.gameConfigs[cat][key].ImageId;
-                    if (id && imageMap[id]) state.gameConfigs[cat][key].imageUrl = imageMap[id];
-                }
-            }
-            console.log("[Backend] Thumbnails fetched and mapped!");
-        }
-    } catch (err) {
-        console.error("[Backend] Error fetching thumbnails:", err);
-    }
+    console.log("[Backend] Item image URLs mapped to thumbnail proxy.");
 }
 
 // Routes
+app.use('/api', require('./backend/routes/thumbs'));
 app.use('/api', require('./backend/routes/auth'));
+app.use('/api', require('./backend/routes/merge'));
 app.use('/api', require('./backend/routes/sync'));
 app.use('/api', require('./backend/routes/shop'));
 app.use('/api/shop', require('./backend/routes/shop'));

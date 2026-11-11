@@ -67,6 +67,9 @@
                 window.APP.renderMarketplaceInventory();
             }
 
+            // Merge Forge: badge + open list follow the live inventory
+            if (window.APP.renderMergeList) window.APP.renderMergeList();
+
             // Update shop item stock in place if visible
             if (shopView && !shopView.classList.contains('hidden')) {
                 updateShopItemsStockInPlace();

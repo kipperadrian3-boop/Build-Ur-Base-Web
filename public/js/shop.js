@@ -18,7 +18,8 @@
         const items = window.APP.gameConfigs[category];
         if (!items) return;
 
-        const itemsWithKey = Object.entries(items).map(([k, v]) => ({ ...v, Key: k }));
+        // NotBuyable items (upgrade levels, weapons) never appear in the shop
+        const itemsWithKey = Object.entries(items).filter(([, v]) => !v.NotBuyable).map(([k, v]) => ({ ...v, Key: k }));
         const sortedItems = itemsWithKey.sort((a, b) => (a.Order || 0) - (b.Order || 0));
 
         sortedItems.forEach(item => {

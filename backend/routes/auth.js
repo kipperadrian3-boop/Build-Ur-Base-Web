@@ -36,17 +36,8 @@ router.post('/login', async (req, res) => {
 
     console.log(`[Auth] User ${userData.username} logged in via code.`);
 
-    // Fetch avatar
-    let avatarUrl = 'https://tr.rbxcdn.com/38c6edcb50633730ff4cf39ac8859840/150/150/AvatarHeadshot/Png';
-    try {
-        const thumbRes = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userData.userId}&size=150x150&format=Png&isCircular=false`);
-        const thumbData = await thumbRes.json();
-        if (thumbData && thumbData.data && thumbData.data.length > 0) {
-            avatarUrl = thumbData.data[0].imageUrl;
-        }
-    } catch (err) {
-        console.error('[Auth] Error fetching avatar:', err);
-    }
+    // Avatar goes through the thumbnail proxy so the link never expires
+    const avatarUrl = `/api/avatar/${userData.userId}`;
 
     // Track player and save login code in MongoDB
     const tracking = require('../tracking');

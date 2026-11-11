@@ -1,0 +1,117 @@
+/* ==========================================================================
+   MERGE FORGE - 2x same defense -> next level
+   ========================================================================== */
+
+.merge-open-btn {
+    position: relative;
+    background: linear-gradient(135deg, #f6d48a, #e8b830);
+    border-color: #d9a520;
+    color: #5c3c25;
+}
+.merge-open-btn:hover { background: linear-gradient(135deg, #f9dc9a, #edc24a); border-color: #c8951a; color: #4a3b32; }
+
+.merge-badge {
+    position: absolute; top: -7px; right: -7px;
+    min-width: 19px; height: 19px; padding: 0 5px;
+    border-radius: 10px; background: #d9534f; color: #fff;
+    font-size: 0.7rem; font-weight: 800; line-height: 19px; text-align: center;
+    box-shadow: 0 2px 6px rgba(217, 83, 79, 0.45);
+}
+
+.merge-card { max-width: 520px; }
+
+/* ---------- list ---------- */
+.merge-list-view { display: flex; flex-direction: column; min-height: 0; }
+.merge-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;
+    overflow-y: auto; max-height: 440px; padding: 0.25rem;
+}
+.merge-empty { grid-column: 1 / -1; text-align: center; color: #8c7361; padding: 2rem 0.5rem; font-size: 0.95rem; }
+.merge-hint { font-size: 0.78rem; color: #a08a78; text-align: center; margin-top: 0.75rem; }
+
+.merge-tile {
+    position: relative; background: linear-gradient(145deg, #fdfbf7, #f5ede4);
+    border: 2px solid #e8dccf; border-radius: 14px; padding: 0.7rem 0.45rem 0.6rem;
+    display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+    cursor: pointer; user-select: none; transition: all 0.2s ease; text-align: center;
+}
+.merge-tile:hover { border-color: #e8b830; transform: translateY(-3px); box-shadow: 0 8px 22px rgba(184, 134, 11, 0.22); }
+.merge-tile.ready { border-color: #e8b830; background: linear-gradient(145deg, #fffaf0, #fbeecb); }
+.merge-tile.locked { opacity: 0.55; cursor: default; }
+.merge-tile.locked:hover { transform: none; box-shadow: none; border-color: #e8dccf; }
+.merge-tile img { width: 72px; height: 72px; object-fit: contain; }
+.merge-tile-name { font-size: 0.85rem; font-weight: 700; color: #4a3b32; line-height: 1.15; }
+.merge-tile-lvl {
+    font-size: 0.78rem; font-weight: 800; color: #8b5a2b;
+    background: #fdf5ea; border: 1px solid #ebdccb; border-radius: 8px; padding: 0.1rem 0.45rem;
+}
+.merge-tile.ready .merge-tile-lvl { background: #e8b830; border-color: #d9a520; color: #4a3b32; }
+.merge-tile-count {
+    position: absolute; top: 6px; right: 7px; font-size: 0.75rem; font-weight: 800; color: #6b4c3a;
+    background: #ffffff; border: 1px solid #ebdccb; border-radius: 8px; padding: 0 0.35rem;
+}
+
+/* level colour accents (match the in-game rank look) */
+.lvl-2 { --lvl-color: #e8b830; }
+.lvl-3 { --lvl-color: #38d6ff; }
+
+/* ---------- detail ---------- */
+.merge-detail-view { display: flex; flex-direction: column; gap: 0.9rem; overflow-y: auto; }
+.merge-back-btn { align-self: flex-start; }
+
+.merge-forge-row { display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
+.merge-slot {
+    position: relative; width: 92px; height: 92px; border-radius: 16px;
+    background: #fdfbf8; border: 2px solid #ebdccb;
+    display: flex; align-items: center; justify-content: center;
+}
+.merge-slot img { width: 80px; height: 80px; object-fit: contain; }
+.merge-slot-lvl {
+    position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%);
+    font-size: 0.72rem; font-weight: 800; color: #4a3b32; white-space: nowrap;
+    background: #ffffff; border: 1px solid #ebdccb; border-radius: 8px; padding: 0 0.4rem;
+}
+.merge-result { border-color: var(--lvl-color, #e8b830); box-shadow: 0 0 0 4px rgba(232, 184, 48, 0.18), 0 8px 24px rgba(184, 134, 11, 0.25); }
+.merge-result .merge-slot-lvl { background: var(--lvl-color, #e8b830); border-color: var(--lvl-color, #e8b830); }
+.merge-op { font-size: 1.4rem; font-weight: 800; color: #b39a85; }
+.merge-arrow { color: #e8b830; }
+
+.merge-owned { text-align: center; font-size: 0.85rem; color: #8c7361; margin-top: 0.4rem; }
+
+.merge-stats { background: #fdfbf8; border: 1.5px solid #f0e6d8; border-radius: 14px; padding: 0.4rem 0.9rem; }
+.merge-stat-row {
+    display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 0.6rem;
+    padding: 0.45rem 0; border-bottom: 1px dashed #ebdccb; font-size: 0.9rem; color: #6b4c3a;
+}
+.merge-stat-row:last-child { border-bottom: none; }
+.merge-stat-label { font-weight: 600; }
+.merge-stat-old { color: #8c7361; }
+.merge-stat-sep { color: #c4b5a5; }
+.merge-stat-new { font-weight: 800; color: #2e7d32; }
+
+.merge-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.merge-btn {
+    background: linear-gradient(135deg, #8b5a2b, #6b4c3a); color: #fff; border: none;
+    border-radius: 12px; padding: 0.85rem 0.5rem; font-size: 0.95rem; font-weight: 800; cursor: pointer;
+    transition: transform 0.15s ease, filter 0.15s ease;
+}
+.merge-btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.merge-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.merge-btn.merge-all { background: linear-gradient(135deg, #f0c64a, #d9a520); color: #4a3b32; }
+
+.merge-status { text-align: center; font-size: 0.85rem; min-height: 1.1em; color: #d9534f; font-weight: 600; }
+.merge-status.ok { color: #2e7d32; }
+
+.merge-flash { animation: mergeFlash 0.7s ease; }
+@keyframes mergeFlash {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.12); box-shadow: 0 0 0 10px rgba(232, 184, 48, 0.35); }
+    100% { transform: scale(1); }
+}
+
+@media (max-width: 440px) {
+    .merge-grid { grid-template-columns: repeat(2, 1fr); }
+    .merge-slot { width: 74px; height: 74px; }
+    .merge-slot img { width: 62px; height: 62px; }
+    .merge-op { font-size: 1.1rem; }
+}

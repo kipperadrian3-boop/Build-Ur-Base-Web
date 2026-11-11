@@ -1,6 +1,7 @@
 // Roblox Open Cloud API helpers for DataStore access
 const crypto = require('crypto');
 const state = require('./state');
+const DS = require('./datastores');
 
 const ROBLOX_OPENCLOUD_API_KEY = process.env.ROBLOX_OPENCLOUD_API_KEY || "9I06qJ0uGUWTIbGfl3TCupVrdm0pBy+7aVIEPkpYy9HHILbGZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNkluTnBaeTB5TURJeExUQTNMVEV6VkRFNE9qVXhPalE1V2lJc0luUjVjQ0k2SWtwWFZDSjkuZXlKaGRXUWlPaUpTYjJKc2IzaEpiblJsY201aGJDSXNJbWx6Y3lJNklrTnNiM1ZrUVhWMGFHVnVkR2xqWVhScGIyNVRaWEoyYVdObElpd2lZbUZ6WlVGd2FVdGxlU0k2SWpsSk1EWnhTakIxUjFWWFZFbGlSMlpzTTFSRGRYQldjbVJ0TUhCQ2VTczNZVlpKUlZCcmNGbDVPVWhJU1V4aVJ5SXNJbTkzYm1WeVNXUWlPaUl4TURVek1ETTRNRFV4T0NJc0ltVjRjQ0k2TVRjNE9EWTBNek0wTlN3aWFXRjBJam94TnpnNE5qTTVOelExTENKdVltWWlPakUzT0RnMk16azNORFY5LmwzTDFiTENtbTBGOGMxdWFQcjVBQzNFSWNacHZrZzlKOVh2OC1abmR2bXBFQVRzbW9EcDZtdDk1UndUb3hNbm42YlRCYVdYNjF3M2dqV3pKN1kzdllQVF9fNUZxS2hqUXgyM3FHcnhpaHItTC05WkRTZExscUctTm1QTWV2S3E4M3d5RmFkNmF6eWJBb1V2V2tzYTJLNHRYZzNjQm1jNWNYS3ptYnlHTlg3VWhwdVItOG03VUZQbG9DSV92ZTNEODFFcHh4Q3c3UHowOHBGNEthcXFsWHpaQ0hhTzBmWGp5OEN1VWxsMjliYVpIajAyN3kxNjZvSG1HcEdFaVdoRnlfWFRxNUJyamdNSVJqWmZtODJmSmsxLUNOS2VfVDBuSlFQX241YVpVTXllNExPRE1ndUpZLTRNa0JKdVBULVZQVlpfWG43b3hqRGJ4SC1OR2dBakNCUQ==";
 const ROBLOX_UNIVERSE_ID = process.env.ROBLOX_UNIVERSE_ID || "10216403339";
@@ -44,7 +45,7 @@ async function getRobloxPlayerData(userId) {
     // 3. Open Cloud DataStore
     try {
         const entryKey = `Player_${userId}`;
-        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=BuildUrBase_PlayerData_v9&entryKey=${encodeURIComponent(entryKey)}`;
+        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=${DS.PLAYER_DATA}&entryKey=${encodeURIComponent(entryKey)}`;
         const res = await fetch(url, {
             headers: { 'x-api-key': ROBLOX_OPENCLOUD_API_KEY }
         });
@@ -110,7 +111,7 @@ async function saveOpenCloudStore(datastoreName, entryKey, data) {
 
 async function saveRobloxPlayerData(userId, rawData) {
     if (!userId || !rawData) return false;
-    const ok = await saveOpenCloudStore("BuildUrBase_PlayerData_v9", `Player_${userId}`, rawData);
+    const ok = await saveOpenCloudStore(DS.PLAYER_DATA, `Player_${userId}`, rawData);
     if (ok) {
         offlinePlayerCache[userId] = { data: rawData, timestamp: Date.now() };
         console.log(`[OpenCloud] Saved DataStore for Player_${userId}`);
@@ -149,7 +150,7 @@ async function getDailyRewardData(userId) {
     // 3. Open Cloud fetch
     try {
         const entryKey = `Player_${userId}`;
-        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=DailyRewardsStore_v2&entryKey=${encodeURIComponent(entryKey)}`;
+        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=${DS.DAILY_REWARDS}&entryKey=${encodeURIComponent(entryKey)}`;
         const res = await fetch(url, { headers: { 'x-api-key': ROBLOX_OPENCLOUD_API_KEY } });
         if (res.ok) {
             const data = await res.json();
@@ -166,7 +167,7 @@ async function getDailyRewardData(userId) {
             };
         }
     } catch (e) {
-        console.error('[OpenCloud] Error fetching DailyRewardsStore_v2:', e);
+        console.error('[OpenCloud] Error fetching daily rewards store:', e);
     }
 
     return { streak: 1, lastClaimTime: 0, canClaim: true, remainingSeconds: 0, hasThreeSpeed: false };
@@ -183,7 +184,7 @@ async function getOfflinePlayerPurchases(userId) {
     const epoch = getStockEpoch();
     try {
         const entryKey = `ISP_${userId}`;
-        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=ItemShopPurchases_v5&entryKey=${encodeURIComponent(entryKey)}`;
+        const url = `https://apis.roblox.com/datastores/v1/universes/${ROBLOX_UNIVERSE_ID}/standard-datastores/datastore/entries/entry?datastoreName=${DS.SHOP_PURCHASES}&entryKey=${encodeURIComponent(entryKey)}`;
         const res = await fetch(url, { headers: { 'x-api-key': ROBLOX_OPENCLOUD_API_KEY } });
         if (res.ok) {
             const data = await res.json();

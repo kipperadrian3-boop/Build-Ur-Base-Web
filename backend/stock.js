@@ -47,7 +47,7 @@ async function getPlayerStockData(userId) {
     for (const cat in gameConfigs) {
         for (const itemKey in gameConfigs[cat]) {
             const itemConf = gameConfigs[cat][itemKey];
-            const totalStock = calculateItemStock(itemKey, epoch, itemConf.StockPercent || 50, itemConf.StockMax || 5);
+            const totalStock = (itemConf.NotBuyable ? 0 : calculateItemStock(itemKey, epoch, itemConf.StockPercent ?? 50, itemConf.StockMax ?? 5));
             const bought = purchases[itemKey] || 0;
             stockMap[itemKey] = Math.max(0, totalStock - bought);
         }

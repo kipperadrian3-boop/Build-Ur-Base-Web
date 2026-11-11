@@ -117,9 +117,9 @@ router.get('/pollActions/:serverId', async (req, res) => {
 
 // Action result (called by Roblox game server)
 router.post('/actionResult', (req, res) => {
-    const { actionId, success, message, newStock, reward, newStreak, lastClaimTime, coinsAwarded } = req.body;
+    const { actionId, success, message, newStock, reward, newStreak, lastClaimTime, coinsAwarded, count } = req.body;
     if (actionId) {
-        state.actionResults[actionId] = { success, message, newStock, reward, newStreak, lastClaimTime, coinsAwarded };
+        state.actionResults[actionId] = { success, message, newStock, reward, newStreak, lastClaimTime, coinsAwarded, count };
         res.status(200).json({ message: 'Result accepted' });
     } else {
         res.status(400).json({ error: 'Missing actionId' });

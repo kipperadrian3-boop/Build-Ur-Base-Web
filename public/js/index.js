@@ -16,7 +16,14 @@
                 return;
             }
 
+            // Item images come as proxy paths (/api/thumb/<id>)
+            for (const cat in data) {
+                for (const key in data[cat]) {
+                    if (data[cat][key].imageUrl) data[cat][key].imageUrl = window.APP.assetUrl(data[cat][key].imageUrl);
+                }
+            }
             window.APP.gameConfigs = data;
+            if (window.APP.renderMergeList) window.APP.renderMergeList();
             renderCategory(window.APP.currentCategory);
         } catch (err) {
             console.error('[Config] Failed to load configs:', err);
@@ -45,13 +52,19 @@
             card.className = 'item-card';
 
             let statsHtml = '';
-            if (item.Price) statsHtml += `<div class="item-stat">Price <span>${item.Price}</span></div>`;
+            if (item.Price && !item.NotBuyable) statsHtml += `<div class="item-stat">Price <span>${item.Price}</span></div>`;
             if (item.Durability) statsHtml += `<div class="item-stat">Health <span>${item.Durability}</span></div>`;
             if (item.Rarity) statsHtml += `<div class="item-stat">Rarity <span>${item.Rarity}</span></div>`;
 
+            if (item.Level) statsHtml += `<div class="item-stat">Level <span>${item.Level}</span></div>`;
             if (item.Damage) statsHtml += `<div class="item-stat">Damage <span>${item.Damage}</span></div>`;
             if (item.FireRate) statsHtml += `<div class="item-stat">Fire Rate <span>${item.FireRate}s</span></div>`;
+            if (item.Cooldown) statsHtml += `<div class="item-stat">Cooldown <span>${item.Cooldown}s</span></div>`;
             if (item.Range) statsHtml += `<div class="item-stat">Range <span>${item.Range}</span></div>`;
+            if (item.SplashRadius) statsHtml += `<div class="item-stat">Splash <span>${item.SplashRadius}</span></div>`;
+            if (item.BurnDamagePerSecond) statsHtml += `<div class="item-stat">Fire Damage <span>${item.BurnDamagePerSecond}/s</span></div>`;
+            if (item.BurnDuration) statsHtml += `<div class="item-stat">Fire Time <span>${item.BurnDuration}s</span></div>`;
+            if (item.Level > 1) statsHtml += `<div class="item-stat">Get it <span>Merge</span></div>`;
 
             if (item.Timer) statsHtml += `<div class="item-stat">Timer <span>${item.Timer}s</span></div>`;
 

@@ -33,6 +33,12 @@
         btn.style.fontSize = `${fittedSize}px`;
     }
 
+    // Relative API paths (e.g. /api/thumb/123) -> absolute when the API runs on another host
+    function assetUrl(url) {
+        if (!url) return '';
+        return url.startsWith('/') ? `${API_BASE}${url}` : url;
+    }
+
     window.APP = {
         API_BASE,
         currentUser: null,
@@ -50,6 +56,7 @@
         syncInterval: null,
         auctionInterval: null,
         lastAuctionState: null,
+        assetUrl,
         calculateFittedFontSize,
         setButtonTextFitted
     };
